@@ -229,6 +229,7 @@ ${c.bold}Options:${c.reset}
   --threshold <n> Minimum score for CI pass (used with ci command)
   --fail-on-warning  Fail CI on warnings (used with ci command)
   --auto          Auto-fix what's possible (used with fix command)
+  --doc <name>    Generate AI prompt for specific doc (architecture, security, etc.)
   --help          Show this help message
   --version       Show version
 
@@ -297,6 +298,9 @@ function main() {
       flags.failOnWarning = true;
     } else if (args[i] === '--auto') {
       flags.auto = true;
+    } else if (args[i] === '--doc' && args[i + 1]) {
+      flags.doc = args[i + 1];
+      i++;
     }
   }
 

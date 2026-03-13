@@ -1,31 +1,195 @@
 /**
- * Fix Command — Auto-detect issues and generate AI-actionable fix instructions
+ * Fix Command — The AI Orchestrator
  * 
- * This command runs guard + audit, collects all issues, and outputs
- * structured fix instructions that AI agents (Copilot, Cursor, Claude, etc.)
- * can execute immediately.
+ * The CLI does NOT write documentation content.
+ * It FLAGS what needs work and generates intelligent prompts
+ * that tell the AI exactly what to research and write.
  * 
  * Output modes:
- *   --format text   Human-readable fix list (default)
- *   --format json   Machine-readable for VS Code extension / CI
- *   --format prompt AI-optimized prompt to paste into any AI chat
- *   --auto          Apply auto-fixable issues immediately (init, templates)
+ *   --format text   Human-readable issue list (default)
+ *   --format json   Machine-readable for VS Code / CI
+ *   --format prompt Full AI-ready prompt with codebase research instructions
+ *   --doc <name>    Generate deep prompt for a specific document
+ *   --auto          Create skeleton files (NOT content) via init
  */
 
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-import { resolve, relative } from 'node:path';
+import { existsSync, readFileSync, mkdirSync } from 'node:fs';
+import { resolve, basename } from 'node:path';
 import { execSync } from 'node:child_process';
 import { c } from '../specguard.mjs';
+
+// ── Document Quality Definitions ───────────────────────────────────────────
+// What each doc SHOULD contain, and what to look for in the codebase
+
+const DOC_EXPECTATIONS = {
+  'docs-canonical/ARCHITECTURE.md': {
+    label: 'Architecture',
+    purpose: 'Define the system design: layers, components, boundaries, and data flow',
+    qualitySignals: [
+      'Has a system overview (not a TODO placeholder)',
+      'Lists actual components/modules with responsibilities',
+      'Defines layer boundaries and allowed imports',
+      'Includes a data flow or request lifecycle description',
+      'References real file paths or directories',
+    ],
+    aiResearchInstructions: `
+RESEARCH STEPS:
+1. Read package.json for project name, description, dependencies, and scripts
+2. List the top-level directory structure (ls -la, focus on src/, lib/, cli/, app/, etc.)
+3. Identify the entry point(s) — check "main", "bin", or "exports" in package.json
+4. For each major directory, read 2-3 representative files to understand its purpose
+5. Map the import graph — which modules import which
+6. Identify external dependencies and what role they play
+
+WRITE THE DOCUMENT:
+- System Overview: 2-3 sentences on what this project does and who uses it
+- Component Map: Table of each module/directory with its responsibility
+- Layer Boundaries: Which layers can import from which (draw import rules)
+- Data Flow: How a request/command flows through the system
+- Key Design Decisions: Why the architecture is the way it is
+- Technology Choices: List frameworks/tools and why they were chosen
+
+FORMAT: Use the specguard metadata header (version, status, last-reviewed).
+IMPORTANT: Use REAL file paths, REAL module names, REAL dependency names. No placeholders.`,
+  },
+
+  'docs-canonical/DATA-MODEL.md': {
+    label: 'Data Model',
+    purpose: 'Document all data structures, schemas, database tables, and relationships',
+    qualitySignals: [
+      'Lists actual database tables/collections or data structures',
+      'Shows field names, types, and constraints',
+      'Documents relationships (foreign keys, references)',
+      'Includes indexes if applicable',
+      'No TODO or example placeholders in table rows',
+    ],
+    aiResearchInstructions: `
+RESEARCH STEPS:
+1. Search for schema definitions: grep -r "Schema\\|model\\|Table\\|Entity\\|interface\\|type " src/ lib/ --include="*.ts" --include="*.js" --include="*.mjs"
+2. Look for database config: grep -r "database\\|sequelize\\|prisma\\|mongoose\\|drizzle\\|knex" package.json
+3. Check for migration files in migrations/, db/, prisma/, etc.
+4. Look for TypeScript interfaces/types that define data shapes
+5. Check for Zod schemas, JSON schemas, or validation files
+6. If no database: document the config file format (.specguard.json, etc.)
+
+WRITE THE DOCUMENT:
+- If database project: Document each table with columns, types, constraints, indexes, relationships
+- If config-driven: Document each config file format with all fields, types, defaults, and validation rules
+- If API project: Document request/response shapes
+- If CLI project: Document any configuration formats, file formats the tool reads/writes
+
+FORMAT: Use markdown tables. Include field name, type, required/optional, default, description.
+IMPORTANT: Research the actual codebase. Do NOT use placeholder values.`,
+  },
+
+  'docs-canonical/SECURITY.md': {
+    label: 'Security',
+    purpose: 'Document authentication, authorization, secrets management, and security boundaries',
+    qualitySignals: [
+      'Documents actual auth mechanism (or explicitly states "no auth needed")',
+      'Lists secrets/credentials and where they are stored',
+      'Describes RBAC/permissions if applicable',
+      'Has a threat model or security boundaries section',
+      'References .gitignore patterns for sensitive files',
+    ],
+    aiResearchInstructions: `
+RESEARCH STEPS:
+1. Check .gitignore for security-related patterns (.env, secrets, keys, credentials)
+2. Search for auth: grep -r "auth\\|token\\|jwt\\|session\\|password\\|secret\\|apiKey\\|API_KEY" src/ lib/ --include="*.ts" --include="*.js" --include="*.mjs"
+3. Check package.json for auth-related dependencies (passport, jwt, bcrypt, etc.)
+4. Look for middleware or guards that enforce permissions
+5. Check for .env files (but DON'T include secret values — only variable names)
+6. Look for CORS configuration, rate limiting, input validation
+
+WRITE THE DOCUMENT:
+- Auth Mechanism: What auth does this project use? (OAuth, JWT, API key, none, etc.)
+- Secrets Inventory: List all secrets/env vars needed (names only, never values)
+- Secrets Storage: Where are secrets stored? (.env, Vault, AWS Secrets Manager, etc.)
+- Permissions/RBAC: What roles exist? What can each role do?
+- Security Boundaries: What is trusted vs untrusted input?
+- .gitignore Audit: Confirm sensitive files are excluded from version control
+- If CLI tool with no auth: State explicitly "No authentication required — this is a local CLI tool"
+
+IMPORTANT: Be specific to THIS project. Don't add generic security boilerplate for features the project doesn't have.`,
+  },
+
+  'docs-canonical/TEST-SPEC.md': {
+    label: 'Test Spec',
+    purpose: 'Document test strategy, coverage requirements, and critical test scenarios',
+    qualitySignals: [
+      'References actual test files and test frameworks',
+      'Lists critical flows that must be tested',
+      'Documents test commands (npm test, etc.)',
+      'Has coverage thresholds or quality gates',
+      'No generic placeholder test scenarios',
+    ],
+    aiResearchInstructions: `
+RESEARCH STEPS:
+1. Read package.json "scripts" for test commands
+2. Find test files: find . -name "*.test.*" -o -name "*.spec.*" -o -name "__tests__" | head -20
+3. Read the test configuration (jest.config, vitest.config, .mocharc, etc.)
+4. Read 2-3 test files to understand the testing patterns used
+5. Check for E2E test setup (playwright, cypress, puppeteer configs)
+6. Look for CI config that runs tests (.github/workflows/)
+
+WRITE THE DOCUMENT:
+- Test Framework: What testing tool is used and why
+- Test Structure: Where tests live, naming conventions
+- Test Commands: Exact commands to run unit, integration, E2E tests
+- Critical Flows: List the 5-10 most important things that MUST be tested
+- Coverage: Current coverage and target thresholds
+- CI Integration: How tests run in CI/CD
+
+IMPORTANT: Reference REAL test files. If there are no tests yet, document what SHOULD be tested.`,
+  },
+
+  'docs-canonical/ENVIRONMENT.md': {
+    label: 'Environment',
+    purpose: 'Document setup steps, dependencies, and environment variables',
+    qualitySignals: [
+      'Has actual setup commands (not placeholders)',
+      'Lists real environment variables with descriptions',
+      'Documents Node/Python/runtime version requirements',
+      'Includes troubleshooting for common setup issues',
+      'Works as a "new contributor can follow this and get running" guide',
+    ],
+    aiResearchInstructions: `
+RESEARCH STEPS:
+1. Read package.json for: engines, scripts, dependencies
+2. Check for .nvmrc, .node-version, .python-version, .tool-versions
+3. Search for process.env usage: grep -r "process.env\\|os.environ" src/ lib/ cli/ --include="*.ts" --include="*.js" --include="*.mjs" --include="*.py"
+4. Check for .env.example or .env.template files
+5. Check for Docker/docker-compose files
+6. Look for setup scripts in scripts/ or Makefile
+
+WRITE THE DOCUMENT:
+- Prerequisites: Node version, package manager, any system deps
+- Setup Steps: Exact commands from clone to running (git clone → npm install → npm run dev)
+- Environment Variables: Table of all env vars (name, required/optional, description, example value — never real secrets)
+- If CLI with no env vars: State "No environment variables required"
+- Common Issues: Known gotchas during setup
+
+IMPORTANT: A new contributor should be able to follow this doc and have the project running in under 10 minutes.`,
+  },
+};
+
+// ── Main Entry ─────────────────────────────────────────────────────────────
 
 export function runFix(projectDir, config, flags) {
   const isJson = flags.format === 'json';
   const isPrompt = flags.format === 'prompt';
   const autoFix = flags.auto || false;
+  const specificDoc = flags.doc || null;
+
+  // If --doc flag is provided, generate a deep prompt for that specific document
+  if (specificDoc) {
+    return generateDocPrompt(projectDir, config, specificDoc);
+  }
 
   if (!isJson && !isPrompt) {
     console.log(`${c.bold}🔧 SpecGuard Fix — ${config.projectName}${c.reset}`);
     console.log(`${c.dim}   Directory: ${projectDir}${c.reset}`);
-    console.log(`${c.dim}   Scanning for fixable issues...${c.reset}\n`);
+    console.log(`${c.dim}   Scanning for issues...${c.reset}\n`);
   }
 
   const issues = collectIssues(projectDir, config);
@@ -33,9 +197,9 @@ export function runFix(projectDir, config, flags) {
   if (autoFix) {
     const fixed = autoFixIssues(projectDir, config, issues);
     if (!isJson) {
-      console.log(`  ${c.green}✅ Auto-fixed ${fixed} issue(s)${c.reset}\n`);
+      console.log(`  ${c.green}✅ Created ${fixed} skeleton file(s)${c.reset}`);
+      console.log(`  ${c.dim}   Now run ${c.cyan}specguard fix --format prompt${c.dim} to generate AI instructions for filling them in${c.reset}\n`);
     }
-    // Re-scan after fixes
     const remaining = collectIssues(projectDir, config);
     outputResults(remaining, projectDir, config, flags);
   } else {
@@ -62,12 +226,12 @@ function collectIssues(projectDir, config) {
         type: 'missing-file',
         severity: 'error',
         file,
-        message: `Required CDD document missing: ${file}`,
+        message: `Missing: ${file}`,
         autoFixable: true,
         fix: {
           action: 'create',
-          command: `specguard init`,
-          ai_instruction: `Create the file ${file} following CDD standards. Use specguard metadata headers (version, status, last-reviewed). Include standard sections for this document type.`,
+          command: 'specguard fix --auto',
+          ai_instruction: `Create ${file} with real project content. Run: specguard fix --doc ${basename(file, '.md').toLowerCase()}`,
         },
       });
     }
@@ -82,80 +246,67 @@ function collectIssues(projectDir, config) {
       type: 'missing-file',
       severity: 'error',
       file: 'AGENTS.md',
-      message: 'No AI agent config file (AGENTS.md or CLAUDE.md)',
+      message: 'Missing: AGENTS.md (AI agent config)',
       autoFixable: true,
       fix: {
         action: 'create',
-        command: 'specguard init',
-        ai_instruction: 'Create AGENTS.md with project stack, workflow rules, and key file references following CDD format.',
+        command: 'specguard fix --auto',
+        ai_instruction: 'Create AGENTS.md with project stack, workflow rules, and SpecGuard integration.',
       },
     });
   }
 
-  // 2. Template placeholders in existing docs
-  for (const file of config.requiredFiles.canonical) {
-    const fullPath = resolve(projectDir, file);
+  // 2. Document quality assessment (not just placeholder detection)
+  for (const [filePath, expectations] of Object.entries(DOC_EXPECTATIONS)) {
+    const fullPath = resolve(projectDir, filePath);
     if (!existsSync(fullPath)) continue;
 
     const content = readFileSync(fullPath, 'utf-8');
-    const lines = content.split('\n');
+    const quality = assessDocQuality(content, expectations);
 
-    lines.forEach((line, i) => {
-      if (line.includes('<!-- TODO')) {
-        issues.push({
-          type: 'unfilled-placeholder',
-          severity: 'warning',
-          file,
-          line: i + 1,
-          message: `Unfilled placeholder on line ${i + 1}: ${line.trim().slice(0, 80)}`,
-          autoFixable: false,
-          fix: {
-            action: 'edit',
-            ai_instruction: `In ${file} line ${i + 1}, replace the TODO placeholder "${line.trim()}" with actual project content. Research the codebase to determine what should go here.`,
-          },
-        });
-      }
-
-      if (line.includes('<!-- e.g.')) {
-        issues.push({
-          type: 'unfilled-placeholder',
-          severity: 'warning',
-          file,
-          line: i + 1,
-          message: `Example placeholder on line ${i + 1}: ${line.trim().slice(0, 80)}`,
-          autoFixable: false,
-          fix: {
-            action: 'edit',
-            ai_instruction: `In ${file} line ${i + 1}, replace the example placeholder "${line.trim()}" with real project data.`,
-          },
-        });
-      }
-    });
-
-    // Draft status
-    if (content.includes('specguard:status draft')) {
+    if (quality.score === 'empty') {
       issues.push({
-        type: 'draft-status',
-        severity: 'info',
-        file,
-        message: `${file} is still in draft status`,
+        type: 'empty-doc',
+        severity: 'error',
+        file: filePath,
+        message: `${expectations.label} doc is a skeleton template with no real content`,
         autoFixable: false,
         fix: {
-          action: 'edit',
-          ai_instruction: `Review ${file} and if the content is complete, change the specguard:status from 'draft' to 'active'.`,
+          action: 'rewrite',
+          ai_instruction: `This document is just a template. Run: specguard fix --doc ${basename(filePath, '.md').toLowerCase()}\nThen have your AI assistant execute the generated prompt to write real content.`,
+        },
+      });
+    } else if (quality.score === 'partial') {
+      issues.push({
+        type: 'partial-doc',
+        severity: 'warning',
+        file: filePath,
+        message: `${expectations.label} doc has ${quality.placeholders} unfilled placeholder(s) — needs AI to complete`,
+        autoFixable: false,
+        fix: {
+          action: 'improve',
+          ai_instruction: `Improve ${filePath}. ${quality.failedSignals.join('. ')}.\nRun: specguard fix --doc ${basename(filePath, '.md').toLowerCase()} --format prompt`,
         },
       });
     }
+    // quality.score === 'good' → no issue
   }
 
-  // 3. Stale documentation (freshness)
-  try {
-    const cliPath = resolve(projectDir, 'cli/specguard.mjs');
-    if (existsSync(cliPath)) {
-      // Use guard output to detect freshness warnings
-      // Skip — freshness is checked inline below
-    }
-  } catch { /* skip */ }
+  // 3. Missing .specguard.json
+  if (!existsSync(resolve(projectDir, '.specguard.json'))) {
+    issues.push({
+      type: 'missing-config',
+      severity: 'info',
+      file: '.specguard.json',
+      message: 'No .specguard.json — using defaults',
+      autoFixable: true,
+      fix: {
+        action: 'create',
+        command: 'specguard fix --auto',
+        ai_instruction: 'Create .specguard.json with projectName, projectType, and projectTypeConfig.',
+      },
+    });
+  }
 
   // 4. Check .env.example if needed
   if (ptc.needsEnvExample !== false && ptc.needsEnvVars !== false) {
@@ -168,81 +319,176 @@ function collectIssues(projectDir, config) {
           type: 'missing-env-example',
           severity: 'warning',
           file: '.env.example',
-          message: '.env file exists but no .env.example template for new contributors',
+          message: '.env exists but no .env.example for contributors',
           autoFixable: false,
           fix: {
             action: 'create',
-            ai_instruction: 'Create .env.example with all environment variables from .env, but replace secret values with placeholder descriptions. Group variables by category (Database, Auth, Cloud, etc.).',
+            ai_instruction: 'Create .env.example with all env var names from .env, replace secrets with descriptions.',
           },
         });
       }
     }
   }
 
-  // 5. Check CHANGELOG has recent entries
+  // 5. CHANGELOG quality
   const changelogPath = resolve(projectDir, config.requiredFiles.changelog);
   if (existsSync(changelogPath)) {
     const content = readFileSync(changelogPath, 'utf-8');
-    if (!content.includes('[Unreleased]')) {
+    if (!content.includes('[Unreleased]') && !content.includes('## [')) {
       issues.push({
-        type: 'changelog-missing-unreleased',
+        type: 'empty-changelog',
         severity: 'warning',
         file: config.requiredFiles.changelog,
-        message: 'CHANGELOG.md missing [Unreleased] section',
+        message: 'CHANGELOG.md has no version entries',
         autoFixable: false,
         fix: {
           action: 'edit',
-          ai_instruction: 'Add an [Unreleased] section at the top of CHANGELOG.md following Keep a Changelog format.',
+          ai_instruction: 'Add version entries to CHANGELOG.md following Keep a Changelog format. Check git log for recent changes.',
         },
       });
     }
   }
 
-  // 6. Missing .specguard.json
-  if (!existsSync(resolve(projectDir, '.specguard.json'))) {
-    issues.push({
-      type: 'missing-config',
-      severity: 'info',
-      file: '.specguard.json',
-      message: 'No .specguard.json config — using defaults. Create one for project-specific settings.',
-      autoFixable: true,
-      fix: {
-        action: 'create',
-        command: 'specguard init',
-        ai_instruction: 'Create .specguard.json with projectName, projectType (detect from package.json), and projectTypeConfig (needsE2E, needsEnvVars, etc.).',
-      },
-    });
-  }
-
   return issues;
 }
 
-// ── Auto-Fix ───────────────────────────────────────────────────────────────
+// ── Document Quality Assessment ────────────────────────────────────────────
+
+function assessDocQuality(content, expectations) {
+  const lines = content.split('\n');
+  const nonEmptyLines = lines.filter(l => l.trim() && !l.startsWith('<!--'));
+  const placeholders = (content.match(/<!-- TODO|<!-- e\.g\./g) || []).length;
+  const hasRealContent = nonEmptyLines.length > 10; // More than just headers
+
+  // Check if this is basically just a template
+  const contentLines = lines.filter(l =>
+    l.trim() &&
+    !l.startsWith('#') &&
+    !l.startsWith('<!--') &&
+    !l.startsWith('|--') &&
+    !l.startsWith('| *') &&
+    !l.match(/^\|\s*$/)
+  );
+
+  // Count lines that are actual content (not table headers, not metadata)
+  const realContentLines = contentLines.filter(l =>
+    !l.includes('<!-- TODO') &&
+    !l.includes('<!-- e.g.') &&
+    !l.match(/^\|\s*\|/) // empty table cells
+  );
+
+  const failedSignals = [];
+  for (const signal of expectations.qualitySignals) {
+    // Simple heuristic checks
+    if (signal.includes('TODO placeholder') && placeholders > 0) {
+      failedSignals.push(`Still has ${placeholders} placeholder(s)`);
+    }
+    if (signal.includes('actual') && realContentLines.length < 5) {
+      failedSignals.push('Lacks specific, project-relevant content');
+    }
+  }
+
+  if (!hasRealContent || realContentLines.length < 5) {
+    return { score: 'empty', placeholders, failedSignals };
+  }
+
+  if (placeholders > 0 || failedSignals.length > 2) {
+    return { score: 'partial', placeholders, failedSignals };
+  }
+
+  return { score: 'good', placeholders: 0, failedSignals: [] };
+}
+
+// ── Deep Document Prompt Generator ─────────────────────────────────────────
+
+function generateDocPrompt(projectDir, config, docName) {
+  // Normalize doc name: "architecture" → "docs-canonical/ARCHITECTURE.md"
+  const normalized = docName.toLowerCase().replace(/\.md$/, '');
+  const mapping = {
+    'architecture': 'docs-canonical/ARCHITECTURE.md',
+    'data-model': 'docs-canonical/DATA-MODEL.md',
+    'datamodel': 'docs-canonical/DATA-MODEL.md',
+    'security': 'docs-canonical/SECURITY.md',
+    'test-spec': 'docs-canonical/TEST-SPEC.md',
+    'testspec': 'docs-canonical/TEST-SPEC.md',
+    'environment': 'docs-canonical/ENVIRONMENT.md',
+    'env': 'docs-canonical/ENVIRONMENT.md',
+  };
+
+  const filePath = mapping[normalized];
+  if (!filePath) {
+    console.error(`${c.red}Unknown document: ${docName}${c.reset}`);
+    console.log(`${c.dim}Available: architecture, data-model, security, test-spec, environment${c.reset}`);
+    process.exit(1);
+  }
+
+  const expectations = DOC_EXPECTATIONS[filePath];
+  if (!expectations) {
+    console.error(`${c.red}No prompt template for: ${filePath}${c.reset}`);
+    process.exit(1);
+  }
+
+  // Build context about the project
+  const projectType = config.projectType || 'unknown';
+  const projectName = config.projectName || basename(projectDir);
+
+  // Check if doc exists and what state it's in
+  const fullPath = resolve(projectDir, filePath);
+  const exists = existsSync(fullPath);
+  const currentContent = exists ? readFileSync(fullPath, 'utf-8') : null;
+  const quality = currentContent ? assessDocQuality(currentContent, expectations) : null;
+
+  console.log(`\n${c.bold}═══════════════════════════════════════════${c.reset}`);
+  console.log(`${c.bold}  AI PROMPT — ${expectations.label} Document${c.reset}`);
+  console.log(`${c.bold}═══════════════════════════════════════════${c.reset}`);
+  console.log(`${c.dim}  Copy everything below and paste into your AI assistant${c.reset}`);
+  console.log(`${c.dim}  (Copilot Chat, Cursor, Claude, Gemini, etc.)${c.reset}`);
+  console.log(`${c.bold}───────────────────────────────────────────${c.reset}\n`);
+
+  // Generate the prompt
+  const action = !exists ? 'CREATE' : quality?.score === 'empty' ? 'REWRITE (current file is just a template)' : 'IMPROVE';
+
+  console.log(`You are documenting the project "${projectName}" (a ${projectType} project).`);
+  console.log(`Project directory: ${projectDir}\n`);
+  console.log(`TASK: ${action} the file ${filePath}`);
+  console.log(`PURPOSE: ${expectations.purpose}\n`);
+
+  if (exists && quality?.score !== 'good') {
+    console.log(`CURRENT STATE: The document ${quality?.score === 'empty' ? 'is just a skeleton template with TODO placeholders — it needs to be completely rewritten with REAL project content' : `has ${quality?.placeholders} placeholder(s) that need to be replaced with real content`}.`);
+    console.log('');
+  }
+
+  console.log(expectations.aiResearchInstructions.trim());
+
+  console.log(`\nVALIDATION: After writing, run \`npx specguard guard\` to verify the document passes all checks.`);
+  console.log(`The document should have NO <!-- TODO --> or <!-- e.g. --> placeholders.`);
+  console.log(`Set the specguard:status header to 'active' (not 'draft').`);
+
+  console.log(`\n${c.bold}───────────────────────────────────────────${c.reset}`);
+  console.log(`${c.dim}  End of prompt — paste the above into your AI assistant${c.reset}\n`);
+}
+
+// ── Auto-Fix (skeleton creation only) ──────────────────────────────────────
 
 function autoFixIssues(projectDir, config, issues) {
   let fixed = 0;
   const autoFixable = issues.filter(i => i.autoFixable);
 
-  for (const issue of autoFixable) {
-    if (issue.type === 'missing-file' || issue.type === 'missing-config') {
-      // Create missing files via init
-      const docsDir = resolve(projectDir, 'docs-canonical');
-      if (!existsSync(docsDir)) {
-        mkdirSync(docsDir, { recursive: true });
-      }
+  if (autoFixable.length === 0) return 0;
 
-      // Use init command to create missing files
-      try {
-        const cliPath = resolve(import.meta.dirname, '..', 'specguard.mjs');
-        execSync(`node ${cliPath} init --dir "${projectDir}"`, {
-          encoding: 'utf-8',
-          stdio: 'pipe',
-        });
-        fixed++;
-      } catch { /* init may partially succeed */ }
-      break; // Init creates all files at once
-    }
+  const docsDir = resolve(projectDir, 'docs-canonical');
+  if (!existsSync(docsDir)) {
+    mkdirSync(docsDir, { recursive: true });
   }
+
+  try {
+    const cliPath = resolve(import.meta.dirname, '..', 'specguard.mjs');
+    execSync(`node ${cliPath} init --dir "${projectDir}"`, {
+      encoding: 'utf-8',
+      stdio: 'pipe',
+    });
+    fixed = autoFixable.length;
+  } catch { /* init may partially succeed */ }
 
   return fixed;
 }
@@ -257,9 +503,9 @@ function outputResults(issues, projectDir, config, flags) {
     if (isJson) {
       console.log(JSON.stringify({ status: 'clean', issues: [], fixCount: 0 }));
     } else if (isPrompt) {
-      console.log('No CDD issues found. All documentation is up to date.');
+      console.log('No CDD issues found. All documentation is complete.');
     } else {
-      console.log(`  ${c.green}${c.bold}✅ No issues found — documentation is clean!${c.reset}\n`);
+      console.log(`  ${c.green}${c.bold}✅ No issues — documentation is complete!${c.reset}\n`);
     }
     return;
   }
@@ -275,7 +521,6 @@ function outputResults(issues, projectDir, config, flags) {
         type: i.type,
         severity: i.severity,
         file: i.file,
-        line: i.line || null,
         message: i.message,
         autoFixable: i.autoFixable,
         fix: i.fix,
@@ -285,18 +530,42 @@ function outputResults(issues, projectDir, config, flags) {
   }
 
   if (isPrompt) {
-    // Generate an AI-ready prompt
-    console.log(`You are working on the project "${config.projectName}" (${config.projectType || 'unknown'} project).`);
-    console.log(`SpecGuard found ${issues.length} CDD compliance issue(s) that need fixing.\n`);
-    console.log('Please fix the following issues:\n');
+    // Smart prompt that groups by action type
+    console.log(`You are working on "${config.projectName}" (${config.projectType || 'unknown'} project).`);
+    console.log(`SpecGuard found ${issues.length} documentation issue(s).\n`);
 
-    issues.forEach((issue, i) => {
-      console.log(`${i + 1}. [${issue.severity.toUpperCase()}] ${issue.message}`);
-      console.log(`   → ${issue.fix.ai_instruction}`);
-      console.log('');
-    });
+    // Group: empty/missing docs first (these need AI to write)
+    const needsWriting = issues.filter(i => i.type === 'empty-doc' || i.type === 'missing-file');
+    const needsFixing = issues.filter(i => i.type === 'partial-doc' || i.type === 'missing-env-example' || i.type === 'empty-changelog');
+    const other = issues.filter(i => !needsWriting.includes(i) && !needsFixing.includes(i));
 
-    console.log('After fixing, run `specguard guard` to verify all issues are resolved.');
+    if (needsWriting.length > 0) {
+      console.log('## Documents That Need To Be Written\n');
+      console.log('These documents are empty templates or missing. For each one, run the specguard fix --doc command to get detailed research instructions:\n');
+      for (const issue of needsWriting) {
+        const docKey = basename(issue.file, '.md').toLowerCase();
+        console.log(`- **${issue.file}**: ${issue.message}`);
+        console.log(`  → Run: \`specguard fix --doc ${docKey}\` for AI research prompt\n`);
+      }
+    }
+
+    if (needsFixing.length > 0) {
+      console.log('## Documents That Need Improvement\n');
+      for (const issue of needsFixing) {
+        console.log(`- **${issue.file}**: ${issue.message}`);
+        console.log(`  → ${issue.fix.ai_instruction}\n`);
+      }
+    }
+
+    if (other.length > 0) {
+      console.log('## Other Issues\n');
+      for (const issue of other) {
+        console.log(`- **${issue.file}**: ${issue.message}`);
+        console.log(`  → ${issue.fix.ai_instruction}\n`);
+      }
+    }
+
+    console.log('\nAfter fixing, run `specguard guard` to verify compliance.');
     return;
   }
 
@@ -309,7 +578,12 @@ function outputResults(issues, projectDir, config, flags) {
     console.log(`  ${c.red}${c.bold}Errors (${errors.length})${c.reset}`);
     for (const e of errors) {
       console.log(`    ${c.red}✖${c.reset} ${e.message}`);
-      console.log(`      ${c.dim}Fix: ${e.fix.ai_instruction.slice(0, 100)}...${c.reset}`);
+      if (e.type === 'empty-doc') {
+        const docKey = basename(e.file, '.md').toLowerCase();
+        console.log(`      ${c.dim}Run: ${c.cyan}specguard fix --doc ${docKey}${c.dim} → paste prompt into AI${c.reset}`);
+      } else {
+        console.log(`      ${c.dim}Run: ${c.cyan}${e.fix.command || 'specguard fix --auto'}${c.reset}`);
+      }
     }
     console.log('');
   }
@@ -318,7 +592,12 @@ function outputResults(issues, projectDir, config, flags) {
     console.log(`  ${c.yellow}${c.bold}Warnings (${warnings.length})${c.reset}`);
     for (const w of warnings) {
       console.log(`    ${c.yellow}⚠${c.reset} ${w.message}`);
-      console.log(`      ${c.dim}Fix: ${w.fix.ai_instruction.slice(0, 100)}...${c.reset}`);
+      if (w.type === 'partial-doc') {
+        const docKey = basename(w.file, '.md').toLowerCase();
+        console.log(`      ${c.dim}Run: ${c.cyan}specguard fix --doc ${docKey}${c.dim} → paste prompt into AI${c.reset}`);
+      } else {
+        console.log(`      ${c.dim}${w.fix.ai_instruction.slice(0, 100)}${c.reset}`);
+      }
     }
     console.log('');
   }
@@ -327,13 +606,16 @@ function outputResults(issues, projectDir, config, flags) {
     console.log(`  ${c.cyan}${c.bold}Info (${infos.length})${c.reset}`);
     for (const info of infos) {
       console.log(`    ${c.cyan}ℹ${c.reset} ${info.message}`);
-      console.log(`      ${c.dim}Fix: ${info.fix.ai_instruction.slice(0, 100)}...${c.reset}`);
     }
     console.log('');
   }
 
   console.log(`  ${c.bold}─────────────────────────────────────${c.reset}`);
-  console.log(`  ${c.bold}Total: ${issues.length} issue(s)${c.reset}  (${issues.filter(i => i.autoFixable).length} auto-fixable)`);
-  console.log(`  ${c.dim}Run ${c.cyan}specguard fix --auto${c.dim} to auto-fix what's possible${c.reset}`);
-  console.log(`  ${c.dim}Run ${c.cyan}specguard fix --format prompt${c.dim} to generate an AI fix prompt${c.reset}\n`);
+  console.log(`  ${c.bold}Total: ${issues.length} issue(s)${c.reset}`);
+  console.log('');
+  console.log(`  ${c.dim}${c.bold}Workflow:${c.reset}`);
+  console.log(`  ${c.dim}  1. ${c.cyan}specguard fix --auto${c.dim}            Create skeleton files${c.reset}`);
+  console.log(`  ${c.dim}  2. ${c.cyan}specguard fix --doc architecture${c.dim}  Get AI prompt for each doc${c.reset}`);
+  console.log(`  ${c.dim}  3. Paste prompt into your AI assistant (Copilot, Cursor, Claude)${c.reset}`);
+  console.log(`  ${c.dim}  4. ${c.cyan}specguard guard${c.dim}                  Verify compliance${c.reset}\n`);
 }
