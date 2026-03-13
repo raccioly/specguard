@@ -25,7 +25,46 @@ This project uses Canonical-Driven Development. Key locations:
 | <!-- e.g. npm install --> | Install dependencies |
 | <!-- e.g. npm run dev --> | Start development server |
 | <!-- e.g. npm test --> | Run unit tests |
-| <!-- e.g. npm run test:e2e --> | Run E2E tests |
+
+## SpecGuard — Documentation Enforcement
+
+This project uses **SpecGuard** for CDD compliance. Run these commands to validate:
+
+```bash
+# Check documentation status
+npx specguard audit
+
+# Validate compliance (errors + warnings)
+npx specguard guard
+
+# See CDD maturity score
+npx specguard score
+
+# Find and fix CDD issues
+npx specguard fix
+
+# Get AI-ready fix prompt
+npx specguard fix --format prompt
+```
+
+### AI Agent Workflow (IMPORTANT)
+
+When working on this project, follow this workflow:
+
+1. **Before any work**: Run `npx specguard guard` to understand current compliance state
+2. **After making changes**: Run `npx specguard fix --format prompt` to find remaining issues
+3. **Fix what SpecGuard reports**: Each issue includes an `ai_instruction` telling you exactly what to do
+4. **Run guard again**: Verify all issues are resolved before committing
+5. **Update CHANGELOG.md**: All changes need a changelog entry
+
+### Auto-Fix Available Issues
+
+If SpecGuard detects missing files, run:
+```bash
+npx specguard fix --auto
+```
+
+This auto-creates required documentation from templates. Then review and fill in project-specific content.
 
 ## Workflow Rules
 
@@ -34,6 +73,7 @@ This project uses Canonical-Driven Development. Key locations:
 3. **Match existing patterns** — Search codebase for similar implementations
 4. **Document drift** — If deviating from canonical docs, add `// DRIFT: reason`
 5. **Update changelog** — All changes need a `CHANGELOG.md` entry
+6. **Run SpecGuard** — After any documentation changes, run `npx specguard guard`
 
 ## Code Conventions
 
@@ -45,3 +85,4 @@ This project uses Canonical-Driven Development. Key locations:
 - Schema/data model changes require `DATA-MODEL.md` update
 - New dependencies require justification
 - Never commit without explicit approval
+- Documentation changes must pass `specguard guard` before commit

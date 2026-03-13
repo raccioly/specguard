@@ -26,6 +26,7 @@ import { runGenerate } from './commands/generate.mjs';
 import { runHooks } from './commands/hooks.mjs';
 import { runBadge } from './commands/badge.mjs';
 import { runCI } from './commands/ci.mjs';
+import { runFix } from './commands/fix.mjs';
 
 // ── Colors (ANSI escape codes, zero deps) ──────────────────────────────────
 export const c = {
@@ -213,6 +214,7 @@ ${c.bold}Commands:${c.reset}
   ${c.green}hooks${c.reset}     Install git hooks (pre-commit, pre-push, commit-msg)
   ${c.green}badge${c.reset}     Generate CDD score badges for README
   ${c.green}ci${c.reset}        Single command for CI/CD pipelines (guard + score)
+  ${c.green}fix${c.reset}       Find issues and generate AI fix instructions
 
 ${c.bold}Options:${c.reset}
   --dir <path>    Project directory (default: current directory)
@@ -226,6 +228,7 @@ ${c.bold}Options:${c.reset}
   --remove        Remove installed SpecGuard hooks
   --threshold <n> Minimum score for CI pass (used with ci command)
   --fail-on-warning  Fail CI on warnings (used with ci command)
+  --auto          Auto-fix what's possible (used with fix command)
   --help          Show this help message
   --version       Show version
 
@@ -292,6 +295,8 @@ function main() {
       i++;
     } else if (args[i] === '--fail-on-warning') {
       flags.failOnWarning = true;
+    } else if (args[i] === '--auto') {
+      flags.auto = true;
     }
   }
 
@@ -344,6 +349,10 @@ function main() {
     case 'ci':
     case 'pipeline':
       runCI(projectDir, config, flags);
+      break;
+    case 'fix':
+    case 'repair':
+      runFix(projectDir, config, flags);
       break;
     default:
       console.error(`${c.red}Unknown command: ${command}${c.reset}`);

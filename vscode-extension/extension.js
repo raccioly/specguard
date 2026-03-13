@@ -43,6 +43,18 @@ function activate(context) {
     vscode.commands.registerCommand('specguard.badge', () => runBadge()),
     vscode.commands.registerCommand('specguard.init', () => runInit()),
     vscode.commands.registerCommand('specguard.refresh', () => refreshScore()),
+    vscode.commands.registerCommand('specguard.fix', () => runFixCommand()),
+    vscode.commands.registerCommand('specguard.fixWithAI', (issue) => fixWithAI(issue)),
+    vscode.commands.registerCommand('specguard.fixAuto', () => runFixAuto()),
+  );
+
+  // Register Code Action provider for markdown files
+  context.subscriptions.push(
+    vscode.languages.registerCodeActionsProvider(
+      { scheme: 'file', language: 'markdown' },
+      new SpecGuardCodeActionProvider(),
+      { providedCodeActionKinds: [vscode.CodeActionKind.QuickFix] }
+    )
   );
 
   // File watcher for auto-refresh
@@ -81,6 +93,68 @@ function deactivate() {
   if (fileWatcher) fileWatcher.dispose();
 }
 
+// ── Code Action Provider ───────────────────────────────────────────────────
+
+class SpecGuardCodeActionProvider {
+  provideCodeActions(document, range, context) {
+    const actions = [];
+
+    for (const diagnostic of context.diagnostics) {
+      if (diagnostic.source !== 'SpecGuard') continue;
+
+      // "Fix with AI" action — sends instruction to AI assistant
+      if (diagnostic.code === 'unfilled-placeholder') {
+        const fixAction = new vscode.CodeAction(
+          '🔧 SpecGuard: Ask AI to fill this section',
+          vscode.CodeActionKind.QuickFix
+        );
+        fixAction.diagnostics = [diagnostic];
+        fixAction.command = {
+          command: 'specguard.fixWithAI',
+          title: 'Fix with AI',
+          arguments: [{
+            file: document.uri.fsPath,
+            line: diagnostic.range.start.line + 1,
+            instruction: `Replace the placeholder on line ${diagnostic.range.start.line + 1} with actual project content. Research the codebase to determine what should go here.`,
+          }],
+        };
+        actions.push(fixAction);
+      }
+
+      if (diagnostic.code === 'draft-status') {
+        const promoteAction = new vscode.CodeAction(
+          '🔧 SpecGuard: Promote to active status',
+          vscode.CodeActionKind.QuickFix
+        );
+        promoteAction.diagnostics = [diagnostic];
+        promoteAction.edit = new vscode.WorkspaceEdit();
+        const line = document.lineAt(diagnostic.range.start.line);
+        promoteAction.edit.replace(
+          document.uri,
+          line.range,
+          line.text.replace('draft', 'active')
+        );
+        actions.push(promoteAction);
+      }
+
+      if (diagnostic.code === 'missing-doc') {
+        const initAction = new vscode.CodeAction(
+          '🔧 SpecGuard: Auto-create missing docs',
+          vscode.CodeActionKind.QuickFix
+        );
+        initAction.diagnostics = [diagnostic];
+        initAction.command = {
+          command: 'specguard.fixAuto',
+          title: 'Auto-fix',
+        };
+        actions.push(initAction);
+      }
+    }
+
+    return actions;
+  }
+}
+
 // ── Core Functions ─────────────────────────────────────────────────────────
 
 function getWorkspaceDir() {
@@ -106,16 +180,12 @@ function findSpecguard(workspaceDir) {
 }
 
 function execSpecguard(workspaceDir, args) {
-  const nodePath = getNodePath();
   const localBin = findSpecguard(workspaceDir);
 
   let cmd;
   if (localBin) {
     cmd = `"${localBin}" ${args}`;
   } else {
-    // Try npx first, then global
-    cmd = `${nodePath} -e "try{require('child_process').execSync('npx -y specguard ${args}',{stdio:'inherit'})}catch{}" 2>/dev/null || specguard ${args}`;
-    // Simpler: just try npx directly
     cmd = `npx -y specguard ${args}`;
   }
 
@@ -198,7 +268,6 @@ function runDiagnostics(workspaceDir) {
   for (const file of requiredFiles) {
     const fullPath = path.join(workspaceDir, file);
     if (!fs.existsSync(fullPath)) {
-      // Report missing file diagnostics on the workspace root config
       addRootDiagnostic(
         workspaceDir, diagnosticsMap,
         `Missing required CDD document: ${file}. Run 'SpecGuard: Initialize CDD Docs' to create it.`,
@@ -218,7 +287,6 @@ function runDiagnostics(workspaceDir) {
     const fileDiags = [];
 
     lines.forEach((line, i) => {
-      // Check for unfilled template placeholders
       if (line.includes('<!-- TODO') || line.includes('<!-- e.g.')) {
         const range = new vscode.Range(i, 0, i, line.length);
         const diag = new vscode.Diagnostic(
@@ -231,7 +299,6 @@ function runDiagnostics(workspaceDir) {
         fileDiags.push(diag);
       }
 
-      // Check for draft status
       if (line.includes('specguard:status draft')) {
         const range = new vscode.Range(i, 0, i, line.length);
         const diag = new vscode.Diagnostic(
@@ -250,14 +317,12 @@ function runDiagnostics(workspaceDir) {
     }
   }
 
-  // Apply root diagnostics
   for (const [uri, diags] of diagnosticsMap) {
     diagnosticCollection.set(uri, diags);
   }
 }
 
 function addRootDiagnostic(workspaceDir, diagnosticsMap, message, severity) {
-  // Report on .specguard.json or package.json or any root file
   const rootFile = ['package.json', '.specguard.json', 'README.md']
     .map(f => path.join(workspaceDir, f))
     .find(f => fs.existsSync(f));
@@ -301,18 +366,85 @@ function runGuard() {
   const output = execSpecguard(dir, 'guard');
   outputChannel.appendLine(output);
 
-  // Also refresh diagnostics
   runDiagnostics(dir);
   refreshScore();
 
-  // Show result notification
   if (output.includes('PASS')) {
     vscode.window.showInformationMessage('SpecGuard: All checks passed ✅');
   } else if (output.includes('WARN')) {
-    vscode.window.showWarningMessage('SpecGuard: Guard found warnings ⚠️');
+    const action = 'Run Fix';
+    vscode.window.showWarningMessage('SpecGuard: Guard found warnings ⚠️', action).then(sel => {
+      if (sel === action) runFixCommand();
+    });
   } else {
-    vscode.window.showErrorMessage('SpecGuard: Guard found errors ❌');
+    const action = 'Run Fix';
+    vscode.window.showErrorMessage('SpecGuard: Guard found errors ❌', action).then(sel => {
+      if (sel === action) runFixCommand();
+    });
   }
+}
+
+function runFixCommand() {
+  const dir = getWorkspaceDir();
+  if (!dir) return;
+
+  outputChannel.clear();
+  outputChannel.show(true);
+  outputChannel.appendLine('$ specguard fix\n');
+
+  const output = execSpecguard(dir, 'fix');
+  outputChannel.appendLine(output);
+
+  // Also get the AI prompt version
+  const promptOutput = execSpecguard(dir, 'fix --format prompt');
+
+  if (promptOutput && !promptOutput.includes('No CDD issues found')) {
+    // Offer to copy AI prompt to clipboard
+    const copyAction = 'Copy AI Fix Prompt';
+    const autoAction = 'Auto-Fix';
+    vscode.window.showInformationMessage(
+      'SpecGuard found issues. Copy the fix prompt for your AI assistant?',
+      copyAction, autoAction
+    ).then(sel => {
+      if (sel === copyAction) {
+        vscode.env.clipboard.writeText(promptOutput).then(() => {
+          vscode.window.showInformationMessage(
+            'SpecGuard: AI fix prompt copied to clipboard! Paste it into Copilot Chat, Cursor, or any AI assistant.'
+          );
+        });
+      } else if (sel === autoAction) {
+        runFixAuto();
+      }
+    });
+  }
+}
+
+function runFixAuto() {
+  const dir = getWorkspaceDir();
+  if (!dir) return;
+
+  outputChannel.clear();
+  outputChannel.show(true);
+  outputChannel.appendLine('$ specguard fix --auto\n');
+
+  const output = execSpecguard(dir, 'fix --auto');
+  outputChannel.appendLine(output);
+
+  refreshScore();
+  vscode.window.showInformationMessage('SpecGuard: Auto-fix complete! Review the created files.');
+}
+
+function fixWithAI(issue) {
+  if (!issue) return;
+
+  // Copy the AI instruction to clipboard for pasting into AI assistant
+  const prompt = `In the file ${issue.file}, line ${issue.line}:\n${issue.instruction}\n\nPlease make this change now.`;
+
+  vscode.env.clipboard.writeText(prompt).then(() => {
+    vscode.window.showInformationMessage(
+      'SpecGuard: Fix instruction copied to clipboard. Paste into your AI assistant (Copilot Chat, Cursor, etc.)'
+    );
+  });
 }
 
 function runBadge() {
@@ -330,7 +462,6 @@ function runBadge() {
     const data = JSON.parse(output.slice(jsonStart));
     const snippet = data.readmeSnippet;
 
-    // Copy to clipboard
     vscode.env.clipboard.writeText(snippet).then(() => {
       vscode.window.showInformationMessage(
         `SpecGuard: Badge markdown copied to clipboard! Score: ${data.score}/100 (${data.grade})`
@@ -352,12 +483,11 @@ function runInit() {
   const output = execSpecguard(dir, 'init');
   outputChannel.appendLine(output);
 
-  // Refresh after init
   refreshScore();
-
   vscode.window.showInformationMessage(
     'SpecGuard: CDD documentation initialized! Check the docs-canonical/ folder.'
   );
 }
 
 module.exports = { activate, deactivate };
+

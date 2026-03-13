@@ -693,6 +693,7 @@ function generateRootFiles(dir, config, stack, scan, flags) {
 3. **Confirm** your approach before writing code
 4. **Implement** matching existing code style
 5. **Log** any deviations in \`DRIFT-LOG.md\` with \`// DRIFT: reason\`
+6. **Run SpecGuard** after changes — \`npx specguard guard\`
 
 ## Project Stack
 
@@ -710,12 +711,31 @@ ${Object.entries(stack).filter(([, v]) => v).map(([k, v]) => `- **${k}**: ${v}`)
 | \`CHANGELOG.md\` | Change tracking |
 | \`DRIFT-LOG.md\` | Documented deviations |
 
+## SpecGuard — Documentation Enforcement
+
+\`\`\`bash
+npx specguard guard          # Validate compliance
+npx specguard fix            # Find issues with fix instructions
+npx specguard fix --format prompt  # AI-ready fix prompt
+npx specguard fix --auto     # Auto-fix missing files
+npx specguard score          # CDD maturity score
+\`\`\`
+
+### AI Agent Workflow (IMPORTANT)
+
+1. **Before work**: Run \`npx specguard guard\` — understand compliance state
+2. **After changes**: Run \`npx specguard fix --format prompt\` — get fix instructions
+3. **Fix issues**: Each issue has an \`ai_instruction\` — follow it exactly
+4. **Verify**: Run \`npx specguard guard\` again — must pass before commit
+5. **Update CHANGELOG**: All changes need a changelog entry
+
 ## Rules
 
 - Never commit without updating CHANGELOG.md
 - If code deviates from docs, add \`// DRIFT: reason\`
 - Security rules in SECURITY.md are mandatory
 - Test requirements in TEST-SPEC.md must be met
+- Documentation changes must pass \`specguard guard\`
 `;
     writeFileSync(agentsPath, content, 'utf-8');
     console.log(`  ${c.green}✅ AGENTS.md${c.reset}`);

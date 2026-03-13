@@ -51,6 +51,14 @@
       {
         "command": "specguard.refresh",
         "title": "SpecGuard: Refresh Score"
+      },
+      {
+        "command": "specguard.fix",
+        "title": "SpecGuard: Find & Fix Issues"
+      },
+      {
+        "command": "specguard.fixAuto",
+        "title": "SpecGuard: Auto-Fix Missing Docs"
       }
     ],
     "configuration": {
