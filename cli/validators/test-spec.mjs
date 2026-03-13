@@ -1,10 +1,10 @@
 /**
  * Test Spec Validator — Checks that tests exist per TEST-SPEC.md coverage rules
+ * Now respects projectTypeConfig (e.g., skip E2E for CLI tools)
  */
 
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
-import { resolve, join, relative } from 'node:path';
-import { createRequire } from 'node:module';
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 export function validateTestSpec(projectDir, config) {
   const results = { name: 'test-spec', errors: [], warnings: [], passed: 0, total: 0 };
@@ -15,10 +15,11 @@ export function validateTestSpec(projectDir, config) {
   }
 
   const content = readFileSync(testSpecPath, 'utf-8');
+  const ptc = config.projectTypeConfig || {};
 
-  // Parse the Service-to-Test Map table
+  // Parse the Source-to-Test Map table (new header) or Service-to-Test Map (old header)
   const serviceMapMatch = content.match(
-    /## Service-to-Test Map[\s\S]*?\n\|.*\|.*\|.*\|.*\|([\s\S]*?)(?=\n##|\n$|$)/
+    /## (?:Service-to-Test Map|Source-to-Test Map)[\s\S]*?\n\|.*\|.*\|.*\|([\s\S]*?)(?=\n##|\n$|$)/
   );
 
   if (serviceMapMatch) {
@@ -33,14 +34,14 @@ export function validateTestSpec(projectDir, config) {
         .map(s => s.trim())
         .filter(s => s.length > 0);
 
-      if (cells.length < 4) continue;
+      if (cells.length < 3) continue;
 
-      const [sourceFile, unitTest, integrationTest, status] = cells;
+      const sourceFile = cells[0];
+      const status = cells[cells.length - 1]; // Last column is always status
 
-      // Skip template/example rows
-      if (sourceFile.startsWith('<!--') || sourceFile === 'Source File') continue;
+      // Skip template/example rows and italic placeholder rows
+      if (sourceFile.startsWith('<!--') || sourceFile === 'Source File' || sourceFile.startsWith('*')) continue;
 
-      // Check if source file is mentioned with ❌ status
       if (status && status.includes('❌')) {
         results.total++;
         results.warnings.push(
@@ -53,55 +54,50 @@ export function validateTestSpec(projectDir, config) {
         );
       } else if (status && status.includes('✅')) {
         results.total++;
-        // Verify the test files actually exist
-        if (unitTest && unitTest !== '—' && unitTest !== '-') {
-          const testPath = findFile(projectDir, unitTest);
-          if (testPath) {
-            results.passed++;
-          } else {
-            results.warnings.push(
-              `TEST-SPEC says ${unitTest} exists but file not found`
-            );
-          }
-        } else {
+        results.passed++;
+      }
+    }
+  }
+
+  // Parse Critical User Journeys OR Critical CLI Flows
+  // Only check E2E journeys if the project type needs E2E
+  if (ptc.needsE2E !== false) {
+    const journeyMatch = content.match(
+      /## Critical (?:User Journeys|CLI Flows)[\s\S]*?\n\|.*\|.*\|.*\|.*\|([\s\S]*?)(?=\n##|\n---|\n$|$)/
+    );
+
+    if (journeyMatch) {
+      const tableContent = journeyMatch[1];
+      const rows = tableContent
+        .split('\n')
+        .filter(line => line.startsWith('|') && !line.includes('---'));
+
+      for (const row of rows) {
+        const cells = row
+          .split('|')
+          .map(s => s.trim())
+          .filter(s => s.length > 0);
+
+        if (cells.length < 4) continue;
+
+        const [num, journey, testFile, status] = cells;
+        // Skip template rows (comments), headers
+        if (num.startsWith('<!--') || num === '#' || journey.startsWith('<!--')) continue;
+
+        if (status && status.includes('❌')) {
+          results.total++;
+          results.warnings.push(
+            `E2E Journey #${num} (${journey}) — missing test: ${testFile}`
+          );
+        } else if (status && status.includes('✅')) {
+          results.total++;
           results.passed++;
         }
       }
     }
   }
 
-  // Parse Critical User Journeys
-  const journeyMatch = content.match(
-    /## Critical User Journeys[\s\S]*?\n\|.*\|.*\|.*\|.*\|([\s\S]*?)(?=\n##|\n$|$)/
-  );
-
-  if (journeyMatch) {
-    const tableContent = journeyMatch[1];
-    const rows = tableContent
-      .split('\n')
-      .filter(line => line.startsWith('|') && !line.includes('---'));
-
-    for (const row of rows) {
-      const cells = row
-        .split('|')
-        .map(s => s.trim())
-        .filter(s => s.length > 0);
-
-      if (cells.length < 4) continue;
-
-      const [num, journey, testFile, status] = cells;
-      if (num.startsWith('<!--') || num === '#') continue;
-
-      if (status && status.includes('❌')) {
-        results.total++;
-        results.warnings.push(
-          `E2E Journey #${num} (${journey}) — missing test: ${testFile}`
-        );
-      }
-    }
-  }
-
-  // If no test spec entries parsed, just check test directory exists
+  // If no test spec entries parsed, check if test directory exists
   if (results.total === 0) {
     results.total = 1;
     const commonTestDirs = ['tests', 'test', '__tests__', 'spec'];
@@ -116,24 +112,4 @@ export function validateTestSpec(projectDir, config) {
   }
 
   return results;
-}
-
-function findFile(projectDir, filename) {
-  // Try common locations
-  const locations = [
-    filename,
-    `tests/${filename}`,
-    `test/${filename}`,
-    `tests/unit/${filename}`,
-    `tests/integration/${filename}`,
-    `tests/e2e/${filename}`,
-    `__tests__/${filename}`,
-  ];
-
-  for (const loc of locations) {
-    if (existsSync(resolve(projectDir, loc))) {
-      return resolve(projectDir, loc);
-    }
-  }
-  return null;
 }

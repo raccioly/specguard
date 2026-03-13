@@ -1,4 +1,4 @@
-# AI Agent Instructions — canonical-spec-kit
+# AI Agent Instructions — specguard
 
 > This project follows **Canonical-Driven Development (CDD)**.
 > Documentation is the source of truth. Read before coding.

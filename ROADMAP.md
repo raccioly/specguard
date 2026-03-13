@@ -1,6 +1,6 @@
 # SpecGuard Roadmap
 
-<!-- specguard:version 0.2.0 -->
+<!-- specguard:version 0.3.0 -->
 <!-- specguard:status living -->
 <!-- specguard:last-reviewed 2026-03-12 -->
 <!-- specguard:owner @raccioly -->
@@ -10,7 +10,7 @@
 | Metadata | Value |
 |----------|-------|
 | **Status** | ![Status](https://img.shields.io/badge/status-active-brightgreen) |
-| **Version** | `0.2.0` |
+| **Version** | `0.3.0` |
 | **Last Updated** | 2026-03-12 |
 | **Owner** | [@raccioly](https://github.com/raccioly) |
 
@@ -30,7 +30,7 @@ Make **Canonical-Driven Development** the industry standard for AI-age software 
 | 1 | Core CLI | ✅ Complete | Mar 2026 |
 | 2 | Polish & Adoption | ✅ Complete | Mar 2026 |
 | 3 | AI Generate Mode | ✅ Complete | Mar 2026 |
-| 4 | Integrations | 🔄 In Progress | Q2 2026 |
+| 4 | Integrations | ✅ Complete | Mar 2026 |
 | 5 | Dashboard (SaaS) | 💭 Future | Q4 2026 |
 
 ---
@@ -86,18 +86,19 @@ The killer feature — reverse-engineer documentation from existing codebases.
 - [x] Env var scanning → ENVIRONMENT.md with categorized variables
 - [x] Auth detection → SECURITY.md pre-fill
 - [x] Hosting detection (Amplify, Vercel, Docker, Fly.io, Railway, Render)
-- [ ] Import analysis → ARCHITECTURE.md layer boundaries (future enhancement)
+- [x] Import analysis → Circular dependency detection + layer boundary validation from ARCHITECTURE.md
 
-## Phase 4: Integrations 🔄
+## Phase 4: Integrations ✅
 
 Deep integration with development tools and platforms.
 
-- [ ] GitHub Action (reusable marketplace action)
-- [ ] PR comments with CDD score changes
-- [ ] Pre-commit hook generator
-- [ ] VS Code extension (inline CDD warnings)
-- [ ] Badge service (dynamic CDD score badge for README)
-- [ ] npm publish to registry
+- [x] GitHub Action (reusable action.yml with PR score comments, thresholds)
+- [x] Pre-commit hook generator (guard validation)
+- [x] Pre-push hook generator (minimum score enforcement)
+- [x] Commit-msg hook (conventional commits validation)
+- [ ] VS Code extension (inline CDD warnings) — future
+- [ ] Badge service (dynamic CDD score badge) — future
+- [ ] npm publish to registry — ready, pending publish
 
 ## Phase 5: Dashboard 💭
 

@@ -12,14 +12,14 @@
 | **Status** | ![Status](https://img.shields.io/badge/status-draft-yellow) |
 | **Version** | `0.1.0` |
 | **Last Updated** | 2026-03-13 |
-| **Project Size** | 16 files, ~3K lines |
+| **Project Size** | 18 files, ~4K lines |
 
 ---
 
 ## System Overview
 
 <!-- TODO: Describe what this system does and who it's for -->
-canonical-spec-kit is a JavaScript application.
+specguard is a JavaScript application.
 
 ## Component Map
 

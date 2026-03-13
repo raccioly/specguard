@@ -1,0 +1,40 @@
+{
+  "projectName": "specguard",
+  "version": "0.3",
+
+  "projectType": "cli",
+
+  "requiredFiles": {
+    "canonical": [
+      "docs-canonical/ARCHITECTURE.md",
+      "docs-canonical/DATA-MODEL.md",
+      "docs-canonical/SECURITY.md",
+      "docs-canonical/TEST-SPEC.md",
+      "docs-canonical/ENVIRONMENT.md"
+    ],
+    "agentFile": ["AGENTS.md", "CLAUDE.md"],
+    "changelog": "CHANGELOG.md",
+    "driftLog": "DRIFT-LOG.md"
+  },
+
+  "projectTypeConfig": {
+    "needsEnvVars": false,
+    "needsEnvExample": false,
+    "needsE2E": false,
+    "needsDatabase": false,
+    "testFramework": "node:test",
+    "runCommand": "node cli/specguard.mjs"
+  },
+
+  "validators": {
+    "structure": true,
+    "docsSync": true,
+    "drift": true,
+    "changelog": true,
+    "architecture": false,
+    "testSpec": true,
+    "security": false,
+    "environment": true,
+    "freshness": true
+  }
+}
