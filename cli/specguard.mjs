@@ -27,6 +27,7 @@ import { runHooks } from './commands/hooks.mjs';
 import { runBadge } from './commands/badge.mjs';
 import { runCI } from './commands/ci.mjs';
 import { runFix } from './commands/fix.mjs';
+import { runWatch } from './commands/watch.mjs';
 
 // ── Colors (ANSI escape codes, zero deps) ──────────────────────────────────
 export const c = {
@@ -215,6 +216,7 @@ ${c.bold}Commands:${c.reset}
   ${c.green}badge${c.reset}     Generate CDD score badges for README
   ${c.green}ci${c.reset}        Single command for CI/CD pipelines (guard + score)
   ${c.green}fix${c.reset}       Find issues and generate AI fix instructions
+  ${c.green}watch${c.reset}     Watch for file changes and re-run guard automatically
 
 ${c.bold}Options:${c.reset}
   --dir <path>    Project directory (default: current directory)
@@ -357,6 +359,9 @@ function main() {
     case 'fix':
     case 'repair':
       runFix(projectDir, config, flags);
+      break;
+    case 'watch':
+      runWatch(projectDir, config, flags);
       break;
     default:
       console.error(`${c.red}Unknown command: ${command}${c.reset}`);
