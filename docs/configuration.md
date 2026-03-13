@@ -1,13 +1,14 @@
 # Configuration
 
-SpecGuard is configured via `.specguard.json` in the project root. If no config file exists, sensible defaults are used.
+SpecGuard is configured via `.specguard.json` in the project root. If no config file exists, sensible defaults are used with auto-detection.
 
 ## Full Reference
 
 ```json
 {
   "projectName": "my-project",
-  "version": "0.3",
+  "version": "0.5",
+  "profile": "standard",
   "projectType": "webapp",
 
   "requiredFiles": {
@@ -28,7 +29,7 @@ SpecGuard is configured via `.specguard.json` in the project root. If no config 
     "needsEnvExample": true,
     "needsE2E": true,
     "needsDatabase": true,
-    "testFramework": "jest",
+    "testFramework": "vitest",
     "runCommand": "npm run dev"
   },
 
@@ -46,92 +47,50 @@ SpecGuard is configured via `.specguard.json` in the project root. If no config 
 }
 ```
 
-## Fields
+## Profile Field
 
-### Top-Level
+The `profile` field sets a baseline preset. User config overrides profile defaults.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `projectName` | string | From `package.json` name | Display name in reports |
-| `version` | string | `"0.1"` | Config schema version |
-| `projectType` | string | Auto-detected | `cli`, `webapp`, `api`, `library`, `monorepo` |
+| Profile | Description | Validators Enabled |
+|---------|-------------|-------------------|
+| `starter` | Minimal CDD — ARCHITECTURE + CHANGELOG | structure, docsSync, changelog |
+| `standard` | Full CDD — all 5 canonical docs (default) | Most validators |
+| `enterprise` | Strict — all docs + all validators | All validators + freshness |
 
-### `projectTypeConfig`
+See [Profiles](./profiles.md) for details.
 
-Controls what validators expect based on your project type:
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `needsEnvVars` | boolean | `true` | Expect environment variable documentation |
-| `needsEnvExample` | boolean | `true` | Expect `.env.example` file |
-| `needsE2E` | boolean | `true` | Expect E2E test documentation |
-| `needsDatabase` | boolean | `true` | Expect database entity documentation |
-| `testFramework` | string | Auto-detected | Test framework name |
-| `runCommand` | string | Auto-detected | Command to run the project |
-
-### `validators`
-
-Enable/disable individual validators:
+## Validators
 
 | Validator | Default | What It Checks |
-|-----------|---------|---------------|
-| `structure` | `true` | `docs-canonical/` exists, required files present |
-| `docsSync` | `true` | SpecGuard metadata headers in docs |
-| `drift` | `true` | DRIFT-LOG.md exists and is maintained |
+|-----------|---------|----------------|
+| `structure` | `true` | `docs-canonical/` exists, required files present, expected sections |
+| `docsSync` | `true` | AGENTS.md references SpecGuard workflow |
+| `drift` | `true` | DRIFT-LOG.md exists and has entries when code deviates |
 | `changelog` | `true` | CHANGELOG.md has [Unreleased] section, version entries |
-| `architecture` | `true` | Component map, layer boundaries, diagrams |
+| `architecture` | varies | Component map, layer boundaries, import graph analysis |
 | `testSpec` | `true` | Test framework, coverage, critical flows documented |
-| `security` | `true` | Auth, secrets, RBAC documentation |
-| `environment` | `true` | Setup steps, env vars, prerequisites |
-| `freshness` | `true` | Docs updated recently relative to code changes |
+| `security` | varies | Auth, secrets, RBAC documentation |
+| `environment` | `true` | Setup steps, env vars, prerequisites, .env.example |
+| `freshness` | varies | Docs updated recently relative to code changes (git-based) |
 
-## Project Type Examples
+## Project Type Detection
 
-### CLI Tool
+SpecGuard auto-detects your project type from `package.json`:
 
-```json
-{
-  "projectType": "cli",
-  "projectTypeConfig": {
-    "needsEnvVars": false,
-    "needsEnvExample": false,
-    "needsE2E": false,
-    "needsDatabase": false
-  }
-}
-```
+| Signal | Detected Type |
+|--------|--------------|
+| `bin` field | `cli` |
+| `next`, `react`, `vue`, `angular`, `svelte` | `webapp` |
+| `express`, `fastify`, `hono`, `koa` | `api` |
+| `main`, `exports`, `module` | `library` |
+| `manage.py` | `webapp` (Django) |
+| `pyproject.toml` | `library` (Python) |
 
-### Web Application
+## Project Type Defaults
 
-```json
-{
-  "projectType": "webapp",
-  "projectTypeConfig": {
-    "needsEnvVars": true,
-    "needsE2E": true,
-    "needsDatabase": true,
-    "testFramework": "jest"
-  }
-}
-```
-
-### API Service
-
-```json
-{
-  "projectType": "api",
-  "projectTypeConfig": {
-    "needsEnvVars": true,
-    "needsDatabase": true,
-    "needsE2E": false
-  }
-}
-```
-
-## Auto-Detection
-
-If no `.specguard.json` exists, SpecGuard auto-detects:
-
-- **Project name**: From `package.json` → `name`, or directory name
-- **Project type**: From `package.json` → `bin` (cli), `react`/`next`/`vue` (webapp), `express`/`fastify` (api)
-- **Test framework**: From `package.json` → scripts or dependencies
+| Type | Env Vars | .env.example | E2E | Database |
+|------|----------|-------------|-----|----------|
+| `cli` | ✗ | ✗ | ✗ | ✗ |
+| `library` | ✗ | ✗ | ✗ | ✗ |
+| `webapp` | ✓ | ✓ | ✓ | ✓ |
+| `api` | ✓ | ✓ | ✗ | ✓ |

@@ -1,66 +1,79 @@
 # SpecGuard — Quick Start
 
-Get CDD documentation compliance in under 5 minutes.
+Get AI-enforced documentation in under 5 minutes.
 
-## 1. Initialize
+## For New Projects
+
+### Option A: Minimal (side projects)
+
+```bash
+cd your-project
+npx specguard init --profile starter
+```
+
+Creates only ARCHITECTURE.md + CHANGELOG — the bare minimum.
+
+### Option B: Full CDD (team projects)
 
 ```bash
 cd your-project
 npx specguard init
 ```
 
-This creates:
-- `docs-canonical/` — 5 canonical documents (Architecture, Data Model, Security, Test Spec, Environment)
-- `AGENTS.md` — AI agent instructions with SpecGuard workflow
-- `CHANGELOG.md` — Change tracking
-- `DRIFT-LOG.md` — Documentation deviation log
-- `.specguard.json` — Project configuration
-- `.github/commands/` — Slash commands for AI agents
+Creates all 5 canonical docs + tracking files + AI slash commands.
 
-## 2. Write Real Content
-
-The init creates **skeleton templates**. The AI writes the real content:
+### Option C: From existing code (best for established projects)
 
 ```bash
-# Generate AI research prompts for each document
-npx specguard fix --doc architecture
-npx specguard fix --doc data-model
-npx specguard fix --doc security
-npx specguard fix --doc test-spec
-npx specguard fix --doc environment
+cd your-project
+npx specguard generate
 ```
 
-Each command outputs research instructions. If you're using an AI coding agent (Claude Code, Cursor, Copilot), the agent reads the output and writes the doc automatically.
+Scans your codebase and generates pre-filled documentation.
 
-## 3. Validate
+## Fill the Docs (AI Does It)
+
+After init creates skeleton templates, run **one command**:
 
 ```bash
-npx specguard guard
+npx specguard diagnose
 ```
 
-Shows pass/fail for each validator. Fix any issues and re-run.
+This outputs a complete AI remediation plan. If you're using Claude Code, Cursor, Copilot, or Antigravity, the AI reads the output and writes every doc automatically.
 
-## 4. Score
+**That's it.** The AI loop:
 
-```bash
-npx specguard score
+```
+diagnose  →  AI reads prompts  →  AI fixes docs  →  guard verifies
+   ↑                                                       ↓
+   └───────────────── issues found? ←──────────────────────┘
 ```
 
-Get your CDD maturity score (0-100) with a letter grade.
-
-## 5. Integrate
+## Verify
 
 ```bash
-# Add git hooks (pre-commit guard, pre-push score)
+npx specguard guard        # Pass/fail check
+npx specguard score        # 0-100 maturity score
+npx specguard score --tax  # How much time docs cost you
+```
+
+## Automate
+
+```bash
+# Git hooks (auto-check on commit/push)
 npx specguard hooks
 
-# CI/CD integration
+# CI/CD pipelines
 npx specguard ci --threshold 70
+
+# Live watch mode with auto-fix
+npx specguard watch --auto-fix
 ```
 
 ## What's Next?
 
-- Run `npx specguard fix` anytime to find issues
-- Run `npx specguard --help` to see all commands
-- Read [configuration.md](./configuration.md) to customize validators
-- Read [commands.md](./commands.md) for the full command reference
+- [Commands Reference](./commands.md) — All 13 commands
+- [Configuration](./configuration.md) — `.specguard.json` options
+- [Profiles](./profiles.md) — Starter vs Standard vs Enterprise
+- [AI Integration](./ai-integration.md) — How AI agents use SpecGuard
+- [FAQ](./faq.md) — Common questions
