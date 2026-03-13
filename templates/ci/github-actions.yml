@@ -21,7 +21,7 @@ jobs:
           node-version: '20'
 
       - name: Run DocGuard CI
-        run: npx docguard ci --format json --threshold 70 > docguard-report.json
+        run: npx docguard-cli ci --format json --threshold 70 > docguard-report.json
 
       - name: Display Results
         if: always()

@@ -39,7 +39,7 @@ DocGuard works with any AI coding agent that can read CLI output:
 ### Step 1: Diagnose
 
 ```bash
-npx docguard diagnose
+npx docguard-cli diagnose
 ```
 
 Output:
@@ -66,7 +66,7 @@ Output:
 The AI reads the remediation plan and executes `docguard fix --doc <name>` for each issue. Each fix command outputs research instructions:
 
 ```bash
-npx docguard fix --doc architecture
+npx docguard-cli fix --doc architecture
 ```
 
 Output:
@@ -90,7 +90,7 @@ WRITE THE DOCUMENT:
 ### Step 3: Verify
 
 ```bash
-npx docguard guard
+npx docguard-cli guard
 ```
 
 If all checks pass → done. If issues remain → repeat from Step 1.
@@ -100,7 +100,7 @@ If all checks pass → done. If issues remain → repeat from Step 1.
 For programmatic integration:
 
 ```bash
-npx docguard diagnose --format json
+npx docguard-cli diagnose --format json
 ```
 
 ```json
@@ -124,7 +124,7 @@ npx docguard diagnose --format json
 ```
 
 ```bash
-npx docguard guard --format json
+npx docguard-cli guard --format json
 ```
 
 ```json
@@ -157,7 +157,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: '20' }
-      - run: npx docguard ci --format json --threshold 70
+      - run: npx docguard-cli ci --format json --threshold 70
 ```
 
 Or copy `templates/ci/github-actions.yml` from this repo.
@@ -165,7 +165,7 @@ Or copy `templates/ci/github-actions.yml` from this repo.
 ### Pre-commit Hook
 
 ```bash
-npx docguard hooks
+npx docguard-cli hooks
 ```
 
 Automatically runs `guard` before every commit.

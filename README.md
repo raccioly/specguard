@@ -3,9 +3,11 @@
 > **AI-native documentation enforcement for Canonical-Driven Development (CDD).**  
 > AI diagnoses. AI fixes. AI verifies. Humans review.
 
+[![npm](https://img.shields.io/npm/v/docguard-cli)](https://www.npmjs.com/package/docguard-cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-green)](https://nodejs.org)
 [![Zero Dependencies](https://img.shields.io/badge/Dependencies-0-brightgreen)](package.json)
+[![GitHub Marketplace](https://img.shields.io/badge/Marketplace-DocGuard-blue?logo=github)](https://github.com/marketplace/actions/docguard-cdd-compliance)
 
 ---
 
@@ -30,22 +32,42 @@
 
 ```bash
 # The primary command — AI diagnoses AND fixes everything
-npx docguard diagnose
+npx docguard-cli diagnose
 
 # Generate CDD docs from an existing codebase
-npx docguard generate
+npx docguard-cli generate
 
 # Start from scratch (minimal setup for side projects)
-npx docguard init --profile starter
+npx docguard-cli init --profile starter
 
 # Start from scratch (full enterprise setup)
-npx docguard init
+npx docguard-cli init
 
 # CI gate — pass/fail for pipelines
-npx docguard guard
+npx docguard-cli guard
 ```
 
 No installation needed. Zero dependencies. Works with Node.js 18+.
+
+### Install
+
+```bash
+# Run directly (no install)
+npx docguard-cli diagnose
+
+# Or install globally
+npm i -g docguard-cli
+docguard diagnose
+```
+
+### GitHub Action
+
+```yaml
+- uses: raccioly/docguard@v0.5.0
+  with:
+    command: guard
+    fail-on-warning: true
+```
 
 ### The AI Loop
 
@@ -63,7 +85,7 @@ diagnose  →  AI reads prompts  →  AI fixes docs  →  guard verifies
 
 ### 🔮 Generate — Reverse-engineer docs from code
 ```
-$ npx docguard generate
+$ npx docguard-cli generate
 
 🔮 DocGuard Generate — my-project
    Scanning codebase to generate canonical documentation...
@@ -93,7 +115,7 @@ $ npx docguard generate
 
 ### 📊 Score — CDD maturity assessment
 ```
-$ npx docguard score
+$ npx docguard-cli score
 
   Category Breakdown
 
@@ -115,7 +137,7 @@ $ npx docguard score
 
 ### 🔍 Diff — Canonical docs vs code comparison
 ```
-$ npx docguard diff
+$ npx docguard-cli diff
 
   🛣️ API Routes
     In code but not documented:
@@ -130,7 +152,7 @@ $ npx docguard diff
 
 ### 🤖 Agents — Generate agent-specific configs
 ```
-$ npx docguard agents
+$ npx docguard-cli agents
 
   ✅ Cursor: .cursor/rules/cdd.mdc
   ✅ GitHub Copilot: .github/copilot-instructions.md
@@ -144,21 +166,21 @@ $ npx docguard agents
 
 ### 🔍 Audit — What docs exist/missing
 ```
-$ npx docguard audit
+$ npx docguard-cli audit
 
   Score: 8/8 required files (100%)
 ```
 
 ### 🏗️ Init — Create CDD docs from templates
 ```
-$ npx docguard init
+$ npx docguard-cli init
 
   Created 9 files (8 docs + .docguard.json)
 ```
 
 ### 🛡️ Guard — Validate project against docs
 ```
-$ npx docguard guard
+$ npx docguard-cli guard
 
   ✅ Structure      8/8 checks passed
   ✅ Doc Sections   10/10 checks passed
@@ -261,8 +283,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - run: npx docguard guard
-      - run: npx docguard score --format json
+      - run: npx docguard-cli guard
+      - run: npx docguard-cli score --format json
 ```
 
 ### Pre-commit Hook
@@ -270,7 +292,7 @@ jobs:
 ```bash
 # .git/hooks/pre-commit
 #!/bin/sh
-npx docguard guard
+npx docguard-cli guard
 ```
 
 ---

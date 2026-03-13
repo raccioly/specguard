@@ -11,7 +11,7 @@ Requiring all 5 canonical docs for a weekend side project is overkill. Requiring
 ### `starter` — For side projects and prototypes
 
 ```bash
-npx docguard init --profile starter
+npx docguard-cli init --profile starter
 ```
 
 **Creates:** ARCHITECTURE.md, CHANGELOG.md, AGENTS.md, DRIFT-LOG.md
@@ -25,8 +25,8 @@ npx docguard init --profile starter
 ### `standard` — For team projects (default)
 
 ```bash
-npx docguard init                    # default profile
-npx docguard init --profile standard # explicit
+npx docguard-cli init                    # default profile
+npx docguard-cli init --profile standard # explicit
 ```
 
 **Creates:** All 5 canonical docs + AGENTS.md + CHANGELOG.md + DRIFT-LOG.md
@@ -40,7 +40,7 @@ npx docguard init --profile standard # explicit
 ### `enterprise` — For regulated and critical projects
 
 ```bash
-npx docguard init --profile enterprise
+npx docguard-cli init --profile enterprise
 ```
 
 **Creates:** All 5 canonical docs + all tracking files
@@ -54,7 +54,7 @@ npx docguard init --profile enterprise
 ### At init time
 
 ```bash
-npx docguard init --profile starter
+npx docguard-cli init --profile starter
 ```
 
 ### In `.docguard.json`
@@ -97,7 +97,7 @@ Change the `"profile"` field in `.docguard.json` and run `docguard diagnose` to 
 ## Measuring the Cost
 
 ```bash
-npx docguard score --tax
+npx docguard-cli score --tax
 ```
 
 Shows estimated weekly maintenance time. If the tax is HIGH, consider downgrading your profile. If LOW, you might benefit from upgrading.

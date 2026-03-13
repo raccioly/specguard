@@ -8,7 +8,7 @@ Get AI-enforced documentation in under 5 minutes.
 
 ```bash
 cd your-project
-npx docguard init --profile starter
+npx docguard-cli init --profile starter
 ```
 
 Creates only ARCHITECTURE.md + CHANGELOG — the bare minimum.
@@ -17,7 +17,7 @@ Creates only ARCHITECTURE.md + CHANGELOG — the bare minimum.
 
 ```bash
 cd your-project
-npx docguard init
+npx docguard-cli init
 ```
 
 Creates all 5 canonical docs + tracking files + AI slash commands.
@@ -26,7 +26,7 @@ Creates all 5 canonical docs + tracking files + AI slash commands.
 
 ```bash
 cd your-project
-npx docguard generate
+npx docguard-cli generate
 ```
 
 Scans your codebase and generates pre-filled documentation.
@@ -36,7 +36,7 @@ Scans your codebase and generates pre-filled documentation.
 After init creates skeleton templates, run **one command**:
 
 ```bash
-npx docguard diagnose
+npx docguard-cli diagnose
 ```
 
 This outputs a complete AI remediation plan. If you're using Claude Code, Cursor, Copilot, or Antigravity, the AI reads the output and writes every doc automatically.
@@ -52,22 +52,22 @@ diagnose  →  AI reads prompts  →  AI fixes docs  →  guard verifies
 ## Verify
 
 ```bash
-npx docguard guard        # Pass/fail check
-npx docguard score        # 0-100 maturity score
-npx docguard score --tax  # How much time docs cost you
+npx docguard-cli guard        # Pass/fail check
+npx docguard-cli score        # 0-100 maturity score
+npx docguard-cli score --tax  # How much time docs cost you
 ```
 
 ## Automate
 
 ```bash
 # Git hooks (auto-check on commit/push)
-npx docguard hooks
+npx docguard-cli hooks
 
 # CI/CD pipelines
-npx docguard ci --threshold 70
+npx docguard-cli ci --threshold 70
 
 # Live watch mode with auto-fix
-npx docguard watch --auto-fix
+npx docguard-cli watch --auto-fix
 ```
 
 ## What's Next?

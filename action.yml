@@ -53,7 +53,7 @@ runs:
 
     - name: Install DocGuard
       shell: bash
-      run: npm install -g docguard@latest || npx docguard --version
+      run: npm install -g docguard-cli@latest || npx docguard-cli --version
 
     - name: Run DocGuard
       id: run
@@ -73,7 +73,7 @@ runs:
 
         # Run the command
         if [ "$CMD" = "score" ]; then
-          RESULT=$(npx docguard score $FLAGS 2>&1)
+          RESULT=$(npx docguard-cli score $FLAGS 2>&1)
           EXIT_CODE=$?
 
           # Extract score from JSON output
@@ -98,7 +98,7 @@ runs:
             exit 1
           fi
         elif [ "$CMD" = "guard" ]; then
-          npx docguard guard $FLAGS
+          npx docguard-cli guard $FLAGS
           EXIT_CODE=$?
 
           # Handle fail-on-warning
@@ -116,7 +116,7 @@ runs:
 
           exit $EXIT_CODE
         else
-          npx docguard $CMD $FLAGS
+          npx docguard-cli $CMD $FLAGS
           EXIT_CODE=$?
           exit $EXIT_CODE
         fi

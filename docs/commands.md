@@ -19,9 +19,9 @@ diagnose (identify + fix)  →  AI executes  →  guard (verify)
 **The AI orchestrator.** Runs all validators, maps every failure to an AI fix prompt, outputs a remediation plan.
 
 ```bash
-npx docguard diagnose                # Human-readable remediation plan
-npx docguard diagnose --format json  # Structured for automation
-npx docguard diagnose --format prompt # Raw AI prompt (all issues combined)
+npx docguard-cli diagnose                # Human-readable remediation plan
+npx docguard-cli diagnose --format json  # Structured for automation
+npx docguard-cli diagnose --format prompt # Raw AI prompt (all issues combined)
 ```
 
 **JSON output includes:**
@@ -35,9 +35,9 @@ npx docguard diagnose --format prompt # Raw AI prompt (all issues combined)
 **Identify issues.** Validate project against canonical docs. Use for CI gates and pre-commit hooks.
 
 ```bash
-npx docguard guard                   # Text output
-npx docguard guard --format json     # Structured JSON
-npx docguard guard --verbose         # Show all check details
+npx docguard-cli guard                   # Text output
+npx docguard-cli guard --format json     # Structured JSON
+npx docguard-cli guard --verbose         # Show all check details
 ```
 
 **Exit codes:** `0` (pass), `1` (errors), `2` (warnings)
@@ -63,9 +63,9 @@ When issues are found, guard outputs: `Run docguard diagnose to get AI fix promp
 **CDD maturity score** (0-100) with category breakdown.
 
 ```bash
-npx docguard score                   # Visual bar chart
-npx docguard score --format json     # Structured JSON
-npx docguard score --tax             # Documentation tax estimate
+npx docguard-cli score                   # Visual bar chart
+npx docguard-cli score --format json     # Structured JSON
+npx docguard-cli score --tax             # Documentation tax estimate
 ```
 
 **`--tax` output:**
@@ -89,11 +89,11 @@ Tax-to-value ratio:  LOW
 **Initialize CDD documentation** from templates.
 
 ```bash
-npx docguard init                           # Full CDD (standard profile)
-npx docguard init --profile starter         # Minimal: ARCHITECTURE + CHANGELOG
-npx docguard init --profile enterprise      # Everything + strict validators
-npx docguard init --dir /path/to/project    # Specify directory
-npx docguard init --skip-prompts            # No AI prompt output
+npx docguard-cli init                           # Full CDD (standard profile)
+npx docguard-cli init --profile starter         # Minimal: ARCHITECTURE + CHANGELOG
+npx docguard-cli init --profile enterprise      # Everything + strict validators
+npx docguard-cli init --dir /path/to/project    # Specify directory
+npx docguard-cli init --skip-prompts            # No AI prompt output
 ```
 
 **Profiles:**
@@ -109,8 +109,8 @@ npx docguard init --skip-prompts            # No AI prompt output
 **Reverse-engineer docs from existing code.** Scans your codebase and creates pre-filled documentation.
 
 ```bash
-npx docguard generate
-npx docguard generate --dir /path/to/project
+npx docguard-cli generate
+npx docguard-cli generate --dir /path/to/project
 ```
 
 **Detects:** Next.js, React, Vue, Angular, Express, Fastify, Hono, Django, FastAPI, SvelteKit, and more.
@@ -120,7 +120,7 @@ npx docguard generate --dir /path/to/project
 **Scan and report** which CDD documents exist, are missing, or need attention.
 
 ```bash
-npx docguard audit
+npx docguard-cli audit
 ```
 
 ---
@@ -132,10 +132,10 @@ npx docguard audit
 **Find issues and generate AI fix instructions.**
 
 ```bash
-npx docguard fix                    # Human-readable issue list
-npx docguard fix --format json      # Machine-readable for VS Code/CI
-npx docguard fix --format prompt    # AI-ready prompt
-npx docguard fix --auto             # Create missing skeleton files
+npx docguard-cli fix                    # Human-readable issue list
+npx docguard-cli fix --format json      # Machine-readable for VS Code/CI
+npx docguard-cli fix --format prompt    # AI-ready prompt
+npx docguard-cli fix --auto             # Create missing skeleton files
 ```
 
 ### `docguard fix --doc <name>`
@@ -143,11 +143,11 @@ npx docguard fix --auto             # Create missing skeleton files
 **Generate a deep AI research prompt** for a specific document.
 
 ```bash
-npx docguard fix --doc architecture
-npx docguard fix --doc data-model
-npx docguard fix --doc security
-npx docguard fix --doc test-spec
-npx docguard fix --doc environment
+npx docguard-cli fix --doc architecture
+npx docguard-cli fix --doc data-model
+npx docguard-cli fix --doc security
+npx docguard-cli fix --doc test-spec
+npx docguard-cli fix --doc environment
 ```
 
 **Output includes:** TASK, PURPOSE, RESEARCH STEPS (what to grep/read), WRITE THE DOCUMENT (expected sections).
@@ -157,8 +157,8 @@ npx docguard fix --doc environment
 **Generate agent-specific config files** from AGENTS.md.
 
 ```bash
-npx docguard agents
-npx docguard agents --list
+npx docguard-cli agents
+npx docguard-cli agents --list
 ```
 
 ---
@@ -170,10 +170,10 @@ npx docguard agents --list
 **Single command for CI/CD pipelines.** Runs guard + score internally (no subprocess).
 
 ```bash
-npx docguard ci                              # Basic check
-npx docguard ci --threshold 70               # Fail below score 70
-npx docguard ci --threshold 80 --fail-on-warning  # Strict mode
-npx docguard ci --format json                # JSON for GitHub Actions
+npx docguard-cli ci                              # Basic check
+npx docguard-cli ci --threshold 70               # Fail below score 70
+npx docguard-cli ci --threshold 80 --fail-on-warning  # Strict mode
+npx docguard-cli ci --format json                # JSON for GitHub Actions
 ```
 
 ### `docguard hooks`
@@ -181,9 +181,9 @@ npx docguard ci --format json                # JSON for GitHub Actions
 **Install git hooks** for automatic validation.
 
 ```bash
-npx docguard hooks              # Install all hooks
-npx docguard hooks --list       # Show installed hooks
-npx docguard hooks --remove     # Remove hooks
+npx docguard-cli hooks              # Install all hooks
+npx docguard-cli hooks --list       # Show installed hooks
+npx docguard-cli hooks --remove     # Remove hooks
 ```
 
 **Hooks installed:**
@@ -196,8 +196,8 @@ npx docguard hooks --remove     # Remove hooks
 **Live watch mode** — re-runs guard on file changes.
 
 ```bash
-npx docguard watch              # Watch and re-run guard
-npx docguard watch --auto-fix   # Also output AI fix prompts on failure
+npx docguard-cli watch              # Watch and re-run guard
+npx docguard-cli watch --auto-fix   # Also output AI fix prompts on failure
 ```
 
 ### `docguard badge`
@@ -205,8 +205,8 @@ npx docguard watch --auto-fix   # Also output AI fix prompts on failure
 **Generate shields.io badges** for README.
 
 ```bash
-npx docguard badge
-npx docguard badge --format json
+npx docguard-cli badge
+npx docguard-cli badge --format json
 ```
 
 ### `docguard diff`
@@ -214,7 +214,7 @@ npx docguard badge --format json
 **Show gaps** between documentation and actual codebase.
 
 ```bash
-npx docguard diff
+npx docguard-cli diff
 ```
 
 ---

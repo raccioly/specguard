@@ -110,7 +110,7 @@ If tax is HIGH, consider using `starter` profile or letting AI handle more.
 ### How do I add DocGuard to CI?
 
 ```bash
-npx docguard ci --format json --threshold 70
+npx docguard-cli ci --format json --threshold 70
 ```
 
 Exit code 0 = pass, 1 = fail. Use `--threshold` to set minimum score.
