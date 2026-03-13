@@ -1,0 +1,324 @@
+/**
+ * Score Command — Calculate CDD maturity score (0-100)
+ * Shows category breakdown with weighted scoring.
+ */
+
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { resolve, join, extname } from 'node:path';
+import { c } from '../specguard.mjs';
+
+const WEIGHTS = {
+  structure: 25,     // Required files exist
+  docQuality: 20,    // Docs have required sections + content
+  testing: 15,       // Test spec alignment
+  security: 10,      // No hardcoded secrets, .gitignore
+  environment: 10,   // Env docs, .env.example
+  drift: 10,         // Drift tracking discipline
+  changelog: 5,      // Changelog maintenance
+  architecture: 5,   // Layer boundary compliance
+};
+
+export function runScore(projectDir, config, flags) {
+  console.log(`${c.bold}📊 SpecGuard Score — ${config.projectName}${c.reset}`);
+  console.log(`${c.dim}   Directory: ${projectDir}${c.reset}\n`);
+
+  const scores = {};
+
+  // ── Structure Score ──
+  scores.structure = calcStructureScore(projectDir, config);
+
+  // ── Doc Quality Score ──
+  scores.docQuality = calcDocQualityScore(projectDir, config);
+
+  // ── Testing Score ──
+  scores.testing = calcTestingScore(projectDir, config);
+
+  // ── Security Score ──
+  scores.security = calcSecurityScore(projectDir, config);
+
+  // ── Environment Score ──
+  scores.environment = calcEnvironmentScore(projectDir, config);
+
+  // ── Drift Score ──
+  scores.drift = calcDriftScore(projectDir, config);
+
+  // ── Changelog Score ──
+  scores.changelog = calcChangelogScore(projectDir, config);
+
+  // ── Architecture Score ──
+  scores.architecture = calcArchitectureScore(projectDir, config);
+
+  // ── Calculate weighted total ──
+  let totalScore = 0;
+  for (const [category, score] of Object.entries(scores)) {
+    totalScore += (score / 100) * WEIGHTS[category];
+  }
+  totalScore = Math.round(totalScore);
+
+  // ── Display Results ──
+  if (flags.format === 'json') {
+    const result = {
+      project: config.projectName,
+      score: totalScore,
+      grade: getGrade(totalScore),
+      categories: {},
+    };
+    for (const [cat, score] of Object.entries(scores)) {
+      result.categories[cat] = {
+        score,
+        weight: WEIGHTS[cat],
+        weighted: Math.round((score / 100) * WEIGHTS[cat]),
+      };
+    }
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+
+  // Visual display
+  console.log(`  ${c.bold}Category Breakdown${c.reset}\n`);
+
+  for (const [category, score] of Object.entries(scores)) {
+    const bar = renderBar(score);
+    const label = category.padEnd(14);
+    const weight = `(×${WEIGHTS[category]})`.padEnd(5);
+    const weighted = Math.round((score / 100) * WEIGHTS[category]);
+    console.log(`  ${label} ${bar} ${score}%  ${c.dim}${weight} = ${weighted} pts${c.reset}`);
+  }
+
+  console.log(`\n${c.bold}  ─────────────────────────────────────${c.reset}`);
+
+  const grade = getGrade(totalScore);
+  const gradeColor = totalScore >= 80 ? c.green : totalScore >= 60 ? c.yellow : c.red;
+  console.log(`  ${gradeColor}${c.bold}CDD Maturity Score: ${totalScore}/100 (${grade})${c.reset}`);
+
+  // Grade description
+  const descriptions = {
+    'A+': 'Excellent — CDD fully adopted',
+    'A': 'Great — Strong CDD compliance',
+    'B': 'Good — Most CDD practices in place',
+    'C': 'Fair — Partial CDD adoption',
+    'D': 'Needs Work — Significant gaps',
+    'F': 'Not Started — Run `specguard init` first',
+  };
+  console.log(`  ${c.dim}${descriptions[grade]}${c.reset}\n`);
+
+  // Suggestions
+  const weakest = Object.entries(scores)
+    .filter(([, s]) => s < 100)
+    .sort((a, b) => a[1] - b[1])
+    .slice(0, 3);
+
+  if (weakest.length > 0) {
+    console.log(`  ${c.bold}Top improvements:${c.reset}`);
+    for (const [cat, score] of weakest) {
+      const suggestion = getSuggestion(cat, score);
+      console.log(`  ${c.yellow}→ ${cat}${c.reset}: ${suggestion}`);
+    }
+    console.log('');
+  }
+}
+
+// ── Scoring Functions ──────────────────────────────────────────────────────
+
+function calcStructureScore(dir, config) {
+  let found = 0;
+  let total = 0;
+
+  for (const file of config.requiredFiles.canonical) {
+    total++;
+    if (existsSync(resolve(dir, file))) found++;
+  }
+
+  total++;
+  const hasAgent = config.requiredFiles.agentFile.some(f => existsSync(resolve(dir, f)));
+  if (hasAgent) found++;
+
+  total++;
+  if (existsSync(resolve(dir, config.requiredFiles.changelog))) found++;
+
+  total++;
+  if (existsSync(resolve(dir, config.requiredFiles.driftLog))) found++;
+
+  return total === 0 ? 0 : Math.round((found / total) * 100);
+}
+
+function calcDocQualityScore(dir, config) {
+  const checks = {
+    'docs-canonical/ARCHITECTURE.md': ['## System Overview', '## Component Map', '## Tech Stack'],
+    'docs-canonical/DATA-MODEL.md': ['## Entities'],
+    'docs-canonical/SECURITY.md': ['## Authentication', '## Secrets Management'],
+    'docs-canonical/TEST-SPEC.md': ['## Test Categories', '## Coverage Rules'],
+    'docs-canonical/ENVIRONMENT.md': ['## Environment Variables', '## Setup Steps'],
+  };
+
+  let found = 0;
+  let total = 0;
+
+  for (const [file, sections] of Object.entries(checks)) {
+    const fullPath = resolve(dir, file);
+    if (!existsSync(fullPath)) continue;
+
+    const content = readFileSync(fullPath, 'utf-8');
+
+    for (const section of sections) {
+      total++;
+      if (content.includes(section)) found++;
+    }
+
+    // Bonus: check if doc has specguard metadata
+    total++;
+    if (content.includes('specguard:version')) found++;
+
+    // Bonus: check if doc has more than just template placeholders
+    total++;
+    const lines = content.split('\n').filter(l => l.trim() && !l.startsWith('#') && !l.startsWith('|') && !l.startsWith('>') && !l.startsWith('<!--'));
+    if (lines.length > 5) found++;
+  }
+
+  return total === 0 ? 0 : Math.round((found / total) * 100);
+}
+
+function calcTestingScore(dir) {
+  let score = 0;
+
+  // Check test directory exists
+  const testDirs = ['tests', 'test', '__tests__', 'spec', 'e2e'];
+  const hasTestDir = testDirs.some(d => existsSync(resolve(dir, d)));
+  if (hasTestDir) score += 40;
+
+  // Check test spec exists
+  if (existsSync(resolve(dir, 'docs-canonical/TEST-SPEC.md'))) score += 30;
+
+  // Check for test config files
+  const testConfigs = ['jest.config.js', 'jest.config.ts', 'vitest.config.ts', 'vitest.config.js', 'pytest.ini', 'setup.cfg', '.mocharc.yml'];
+  const hasTestConfig = testConfigs.some(f => existsSync(resolve(dir, f)));
+  if (hasTestConfig) score += 15;
+
+  // Check for CI test step
+  const ciFiles = ['.github/workflows/ci.yml', '.github/workflows/test.yml'];
+  const hasCITest = ciFiles.some(f => existsSync(resolve(dir, f)));
+  if (hasCITest) score += 15;
+
+  return Math.min(100, score);
+}
+
+function calcSecurityScore(dir) {
+  let score = 0;
+
+  // SECURITY.md exists
+  if (existsSync(resolve(dir, 'docs-canonical/SECURITY.md'))) score += 30;
+
+  // .gitignore exists and includes .env
+  const gitignorePath = resolve(dir, '.gitignore');
+  if (existsSync(gitignorePath)) {
+    score += 20;
+    const content = readFileSync(gitignorePath, 'utf-8');
+    if (content.includes('.env')) score += 20;
+  }
+
+  // No .env file committed (check if .env exists but .gitignore covers it)
+  if (!existsSync(resolve(dir, '.env')) || existsSync(gitignorePath)) score += 15;
+
+  // .env.example exists (safe template)
+  if (existsSync(resolve(dir, '.env.example'))) score += 15;
+
+  return Math.min(100, score);
+}
+
+function calcEnvironmentScore(dir) {
+  let score = 0;
+
+  if (existsSync(resolve(dir, 'docs-canonical/ENVIRONMENT.md'))) score += 40;
+  if (existsSync(resolve(dir, '.env.example'))) score += 30;
+
+  // Check for setup documentation
+  const readmePath = resolve(dir, 'README.md');
+  if (existsSync(readmePath)) {
+    const content = readFileSync(readmePath, 'utf-8');
+    if (content.includes('## Setup') || content.includes('## Getting Started') || content.includes('Quick Start')) {
+      score += 30;
+    } else {
+      score += 15;  // README exists but no setup section
+    }
+  }
+
+  return Math.min(100, score);
+}
+
+function calcDriftScore(dir, config) {
+  // Perfect score if drift log exists and no unlogged drift comments
+  if (!existsSync(resolve(dir, config.requiredFiles.driftLog))) return 0;
+
+  let score = 50; // Drift log exists
+
+  const content = readFileSync(resolve(dir, config.requiredFiles.driftLog), 'utf-8');
+
+  // Has structure (headers)
+  if (content.includes('## ') || content.includes('| ')) score += 25;
+
+  // Has entries (not just template)
+  const lines = content.split('\n').filter(l => l.trim() && !l.startsWith('#') && !l.startsWith('<!--'));
+  if (lines.length > 3) score += 25;
+
+  return Math.min(100, score);
+}
+
+function calcChangelogScore(dir, config) {
+  const path = resolve(dir, config.requiredFiles.changelog);
+  if (!existsSync(path)) return 0;
+
+  let score = 40; // Exists
+  const content = readFileSync(path, 'utf-8');
+
+  if (content.includes('[Unreleased]') || content.includes('[unreleased]')) score += 30;
+  if (/## \[[\d.]+\]/.test(content)) score += 30;
+
+  return Math.min(100, score);
+}
+
+function calcArchitectureScore(dir) {
+  const archPath = resolve(dir, 'docs-canonical/ARCHITECTURE.md');
+  if (!existsSync(archPath)) return 0;
+
+  let score = 30;
+  const content = readFileSync(archPath, 'utf-8');
+
+  if (content.includes('## Layer Boundaries') || content.includes('## Component Map')) score += 25;
+  if (content.includes('```mermaid') || content.includes('graph ')) score += 20;
+  if (content.includes('## External Dependencies')) score += 15;
+  if (content.includes('## Revision History')) score += 10;
+
+  return Math.min(100, score);
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+function renderBar(score) {
+  const filled = Math.round(score / 5);
+  const empty = 20 - filled;
+  const color = score >= 80 ? c.green : score >= 60 ? c.yellow : c.red;
+  return `${color}${'█'.repeat(filled)}${c.dim}${'░'.repeat(empty)}${c.reset}`;
+}
+
+function getGrade(score) {
+  if (score >= 95) return 'A+';
+  if (score >= 80) return 'A';
+  if (score >= 65) return 'B';
+  if (score >= 50) return 'C';
+  if (score >= 30) return 'D';
+  return 'F';
+}
+
+function getSuggestion(category, score) {
+  const suggestions = {
+    structure: 'Run `specguard init` to create missing documentation',
+    docQuality: 'Fill in template sections — replace placeholders with real content',
+    testing: 'Add tests/ directory and configure TEST-SPEC.md',
+    security: 'Create SECURITY.md and add .env to .gitignore',
+    environment: 'Document env variables and create .env.example',
+    drift: 'Create DRIFT-LOG.md and log any code deviations',
+    changelog: 'Maintain CHANGELOG.md with [Unreleased] section',
+    architecture: 'Add layer boundaries and Mermaid diagrams to ARCHITECTURE.md',
+  };
+  return suggestions[category] || 'Review and improve this area';
+}

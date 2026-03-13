@@ -19,6 +19,9 @@ import { resolve, basename } from 'node:path';
 import { runAudit } from './commands/audit.mjs';
 import { runInit } from './commands/init.mjs';
 import { runGuard } from './commands/guard.mjs';
+import { runScore } from './commands/score.mjs';
+import { runDiff } from './commands/diff.mjs';
+import { runAgents } from './commands/agents.mjs';
 
 // ── Colors (ANSI escape codes, zero deps) ──────────────────────────────────
 export const c = {
@@ -116,10 +119,17 @@ ${c.bold}Commands:${c.reset}
   ${c.green}audit${c.reset}     Scan project, report what CDD docs exist or are missing
   ${c.green}init${c.reset}      Initialize CDD documentation from templates
   ${c.green}guard${c.reset}     Validate project against its canonical documentation
+  ${c.green}score${c.reset}     Calculate CDD maturity score (0-100)
+  ${c.green}diff${c.reset}      Show gaps between canonical docs and code
+  ${c.green}agents${c.reset}    Generate agent-specific config files from AGENTS.md
 
 ${c.bold}Options:${c.reset}
   --dir <path>    Project directory (default: current directory)
   --verbose       Show detailed output
+  --format json   Output results as JSON (for CI)
+  --fix           Auto-create missing files from templates
+  --force         Overwrite existing files (for agents/init)
+  --agent <name>  Target specific agent (for agents command)
   --help          Show this help message
   --version       Show version
 
@@ -152,6 +162,10 @@ function main() {
   const flags = {
     dir: '.',
     verbose: false,
+    format: 'text',
+    fix: false,
+    force: false,
+    agent: null,
   };
 
   for (let i = 1; i < args.length; i++) {
@@ -160,6 +174,16 @@ function main() {
       i++;
     } else if (args[i] === '--verbose') {
       flags.verbose = true;
+    } else if (args[i] === '--format' && args[i + 1]) {
+      flags.format = args[i + 1];
+      i++;
+    } else if (args[i] === '--fix') {
+      flags.fix = true;
+    } else if (args[i] === '--force') {
+      flags.force = true;
+    } else if (args[i] === '--agent' && args[i + 1]) {
+      flags.agent = args[i + 1];
+      i++;
     }
   }
 
@@ -188,6 +212,15 @@ function main() {
       break;
     case 'guard':
       runGuard(projectDir, config, flags);
+      break;
+    case 'score':
+      runScore(projectDir, config, flags);
+      break;
+    case 'diff':
+      runDiff(projectDir, config, flags);
+      break;
+    case 'agents':
+      runAgents(projectDir, config, flags);
       break;
     default:
       console.error(`${c.red}Unknown command: ${command}${c.reset}`);
