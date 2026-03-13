@@ -35,15 +35,19 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/ricardoaccioly/specguard"
+    "url": "https://github.com/raccioly/specguard"
   },
-  "homepage": "https://github.com/ricardoaccioly/specguard#readme",
+  "homepage": "https://github.com/raccioly/specguard#readme",
+  "bugs": {
+    "url": "https://github.com/raccioly/specguard/issues"
+  },
   "engines": {
     "node": ">=18.0.0"
   },
   "files": [
     "cli/",
     "templates/",
+    "docs/",
     "STANDARD.md",
     "PHILOSOPHY.md",
     "README.md",

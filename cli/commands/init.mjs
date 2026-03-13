@@ -88,32 +88,63 @@ export function runInit(projectDir, config, flags) {
     console.log(`  ${c.yellow}⏭️${c.reset}  .specguard.json ${c.dim}(already exists)${c.reset}`);
   }
 
-  // Install slash commands for AI agents
+  // Install slash commands for AI agents — detect which agents are in use
   const commandsSourceDir = resolve(TEMPLATES_DIR, 'commands');
   if (existsSync(commandsSourceDir)) {
-    const commandsDestDir = resolve(projectDir, '.github', 'commands');
-    if (!existsSync(commandsDestDir)) {
-      mkdirSync(commandsDestDir, { recursive: true });
-    }
-
     const commandFiles = readdirSync(commandsSourceDir).filter(f => f.endsWith('.md'));
-    let commandsCreated = 0;
 
-    for (const file of commandFiles) {
-      const destPath = resolve(commandsDestDir, file);
-      if (!existsSync(destPath)) {
-        const content = readFileSync(resolve(commandsSourceDir, file), 'utf-8');
-        writeFileSync(destPath, content, 'utf-8');
-        commandsCreated++;
+    // Detect which AI agent directories exist in the project
+    const agentDirs = [
+      { name: 'GitHub Copilot', path: '.github/commands' },
+      { name: 'Cursor', path: '.cursor/rules' },
+      { name: 'Google Gemini', path: '.gemini/commands' },
+      { name: 'Claude Code', path: '.claude/commands' },
+      { name: 'Antigravity', path: '.agents/workflows' },
+    ];
+
+    // Find which agent dirs already exist in the project
+    const detected = agentDirs.filter(a =>
+      existsSync(resolve(projectDir, a.path.split('/')[0])) // check parent dir exists
+    );
+
+    // If none detected, default to .github/commands (most universal)
+    const targets = detected.length > 0
+      ? detected
+      : [{ name: 'GitHub (default)', path: '.github/commands' }];
+
+    let totalCreated = 0;
+    const installedLocations = [];
+
+    for (const target of targets) {
+      const destDir = resolve(projectDir, target.path);
+      if (!existsSync(destDir)) {
+        mkdirSync(destDir, { recursive: true });
+      }
+
+      let dirCreated = 0;
+      for (const file of commandFiles) {
+        const destPath = resolve(destDir, file);
+        if (!existsSync(destPath)) {
+          const content = readFileSync(resolve(commandsSourceDir, file), 'utf-8');
+          writeFileSync(destPath, content, 'utf-8');
+          dirCreated++;
+        }
+      }
+
+      if (dirCreated > 0) {
+        totalCreated += dirCreated;
+        installedLocations.push(`${target.path}/ (${target.name})`);
       }
     }
 
-    if (commandsCreated > 0) {
-      created.push(`.github/commands/ (${commandsCreated} slash commands)`);
-      console.log(`  ${c.green}✅${c.reset} Installed ${c.cyan}${commandsCreated} slash commands${c.reset} in .github/commands/`);
-      console.log(`  ${c.dim}   AI agents (Copilot, Claude Code, Cursor) auto-discover these${c.reset}`);
+    if (totalCreated > 0) {
+      created.push(`slash commands (${installedLocations.length} location(s))`);
+      console.log(`  ${c.green}✅${c.reset} Installed ${c.cyan}slash commands${c.reset} for AI agents:`);
+      for (const loc of installedLocations) {
+        console.log(`     ${c.dim}→ ${loc}${c.reset}`);
+      }
     } else {
-      console.log(`  ${c.yellow}⏭️${c.reset}  .github/commands/ ${c.dim}(already exists)${c.reset}`);
+      console.log(`  ${c.yellow}⏭️${c.reset}  Slash commands ${c.dim}(already installed)${c.reset}`);
     }
   }
 
