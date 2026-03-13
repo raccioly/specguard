@@ -1,7 +1,7 @@
 # SpecGuard
 
-> **The enforcement tool for Canonical-Driven Development (CDD).**  
-> Document first. Any agent understands. Machine-enforceable.
+> **AI-native documentation enforcement for Canonical-Driven Development (CDD).**  
+> AI diagnoses. AI fixes. AI verifies. Humans review.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-green)](https://nodejs.org)
@@ -29,24 +29,37 @@
 ## Quick Start
 
 ```bash
-# Generate CDD docs from an existing codebase (the killer feature)
+# The primary command — AI diagnoses AND fixes everything
+npx specguard diagnose
+
+# Generate CDD docs from an existing codebase
 npx specguard generate
 
-# Or start from scratch with templates
+# Start from scratch (minimal setup for side projects)
+npx specguard init --profile starter
+
+# Start from scratch (full enterprise setup)
 npx specguard init
 
-# Check your CDD maturity score
-npx specguard score
-
-# Validate project alignment (use in CI/pre-commit)
+# CI gate — pass/fail for pipelines
 npx specguard guard
 ```
 
 No installation needed. Zero dependencies. Works with Node.js 18+.
 
+### The AI Loop
+
+```
+diagnose  →  AI reads prompts  →  AI fixes docs  →  guard verifies
+   ↑                                                       ↓
+   └───────────────── issues found? ←──────────────────────┘
+```
+
+`diagnose` is the primary command. It runs all validators, maps every failure to an AI-actionable fix prompt, and outputs a remediation plan. Your AI agent runs it, fixes the docs, and runs `guard` to verify. Zero human intervention.
+
 ---
 
-## 7 Commands
+## 13 Commands
 
 ### 🔮 Generate — Reverse-engineer docs from code
 ```

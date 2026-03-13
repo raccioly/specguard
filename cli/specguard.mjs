@@ -11,7 +11,7 @@
  *   npx specguard guard     — Validate project against its canonical docs
  *   npx specguard --help    — Show help
  * 
- * @see https://github.com/ricardoaccioly/specguard
+ * @see https://github.com/raccioly/specguard
  */
 
 import { readFileSync, existsSync } from 'node:fs';
@@ -28,6 +28,7 @@ import { runBadge } from './commands/badge.mjs';
 import { runCI } from './commands/ci.mjs';
 import { runFix } from './commands/fix.mjs';
 import { runWatch } from './commands/watch.mjs';
+import { runDiagnose } from './commands/diagnose.mjs';
 
 // ── Colors (ANSI escape codes, zero deps) ──────────────────────────────────
 export const c = {
@@ -252,7 +253,7 @@ function deepMerge(target, source) {
 function printBanner() {
   console.log(`
 ${c.cyan}${c.bold}  ╔═══════════════════════════════════════════╗
-  ║         SpecGuard v0.4.0                  ║
+  ║         SpecGuard v0.5.0                  ║
   ║   Canonical-Driven Development (CDD)      ║
   ╚═══════════════════════════════════════════╝${c.reset}
 `);
@@ -265,18 +266,19 @@ function printHelp() {
   specguard <command> [options]
 
 ${c.bold}Commands:${c.reset}
-  ${c.green}audit${c.reset}     Scan project, report what CDD docs exist or are missing
-  ${c.green}init${c.reset}      Initialize CDD documentation from templates
-  ${c.green}guard${c.reset}     Validate project against its canonical documentation
-  ${c.green}score${c.reset}     Calculate CDD maturity score (0-100)
-  ${c.green}diff${c.reset}      Show gaps between canonical docs and code
-  ${c.green}agents${c.reset}    Generate agent-specific config files from AGENTS.md
-  ${c.green}generate${c.reset}  Reverse-engineer canonical docs from existing code
-  ${c.green}hooks${c.reset}     Install git hooks (pre-commit, pre-push, commit-msg)
-  ${c.green}badge${c.reset}     Generate CDD score badges for README
-  ${c.green}ci${c.reset}        Single command for CI/CD pipelines (guard + score)
-  ${c.green}fix${c.reset}       Find issues and generate AI fix instructions
-  ${c.green}watch${c.reset}     Watch for file changes and re-run guard automatically
+  ${c.green}audit${c.reset}      Scan project, report what CDD docs exist or are missing
+  ${c.green}init${c.reset}       Initialize CDD documentation from templates
+  ${c.green}guard${c.reset}      Validate project against its canonical documentation
+  ${c.green}score${c.reset}      Calculate CDD maturity score (0-100)
+  ${c.green}diagnose${c.reset}   AI orchestrator — chains guard→fix in one command
+  ${c.green}diff${c.reset}       Show gaps between canonical docs and code
+  ${c.green}agents${c.reset}     Generate agent-specific config files from AGENTS.md
+  ${c.green}generate${c.reset}   Reverse-engineer canonical docs from existing code
+  ${c.green}hooks${c.reset}      Install git hooks (pre-commit, pre-push, commit-msg)
+  ${c.green}badge${c.reset}      Generate CDD score badges for README
+  ${c.green}ci${c.reset}         Single command for CI/CD pipelines (guard + score)
+  ${c.green}fix${c.reset}        Find issues and generate AI fix instructions
+  ${c.green}watch${c.reset}      Watch for file changes and re-run guard automatically
 
 ${c.bold}Options:${c.reset}
   --dir <path>    Project directory (default: current directory)
@@ -303,6 +305,9 @@ ${c.bold}Profiles:${c.reset}
   ${c.green}enterprise${c.reset}   Strict CDD — all docs + all validators + freshness enforced
 
 ${c.bold}Examples:${c.reset}
+  ${c.dim}# AI auto-diagnose and fix${c.reset}
+  specguard diagnose
+
   ${c.dim}# Quick start for a side project${c.reset}
   specguard init --profile starter
 
@@ -375,6 +380,10 @@ function main() {
       i++;
     } else if (args[i] === '--tax') {
       flags.tax = true;
+    } else if (args[i] === '--auto-fix') {
+      flags.autoFix = true;
+    } else if (args[i] === '--skip-prompts') {
+      flags.skipPrompts = true;
     }
   }
 
@@ -386,7 +395,7 @@ function main() {
   }
 
   if (command === '--version' || command === '-v') {
-    console.log('specguard v0.4.0');
+    console.log('specguard v0.5.0');
     process.exit(0);
   }
 
@@ -431,6 +440,10 @@ function main() {
     case 'fix':
     case 'repair':
       runFix(projectDir, config, flags);
+      break;
+    case 'diagnose':
+    case 'dx':
+      runDiagnose(projectDir, config, flags);
       break;
     case 'watch':
       runWatch(projectDir, config, flags);

@@ -1,6 +1,10 @@
 /**
  * Guard Command — Validate project against its canonical documentation
  * Runs all enabled validators and reports results.
+ *
+ * Two modes:
+ *   runGuard()         → prints to console, exits with code
+ *   runGuardInternal() → returns data, no side effects (for diagnose, ci)
  */
 
 import { c } from '../specguard.mjs';
@@ -14,14 +18,14 @@ import { validateDocsSync } from '../validators/docs-sync.mjs';
 import { validateArchitecture } from '../validators/architecture.mjs';
 import { validateFreshness } from '../validators/freshness.mjs';
 
-export function runGuard(projectDir, config, flags) {
-  console.log(`${c.bold}🛡️  SpecGuard Guard — ${config.projectName}${c.reset}`);
-  console.log(`${c.dim}   Directory: ${projectDir}${c.reset}\n`);
-
-  const allResults = [];
+/**
+ * Internal guard — returns structured data, no console output, no process.exit.
+ * Used by diagnose, ci, and guard --format json.
+ */
+export function runGuardInternal(projectDir, config) {
   const validators = config.validators || {};
+  const results = [];
 
-  // Run each enabled validator
   const validatorMap = [
     { key: 'structure', name: 'Structure', fn: () => validateStructure(projectDir, config) },
     { key: 'structure', name: 'Doc Sections', fn: () => validateDocSections(projectDir, config) },
@@ -41,7 +45,6 @@ export function runGuard(projectDir, config, flags) {
         if (r.status === 'pass') passed++;
         else if (r.status === 'warn') warnings.push(r.message);
         else if (r.status === 'fail') errors.push(r.message);
-        // skip = don't count
       }
       return { errors, warnings, passed, total: passed + warnings.length + errors.length };
     }},
@@ -49,69 +52,107 @@ export function runGuard(projectDir, config, flags) {
 
   for (const { key, name, fn } of validatorMap) {
     if (validators[key] === false) {
-      if (flags.verbose) {
-        console.log(`  ${c.dim}⏭️  ${name} (disabled)${c.reset}`);
-      }
+      results.push({ name, key, status: 'skipped', errors: [], warnings: [], passed: 0, total: 0 });
       continue;
     }
 
     try {
       const result = fn();
-      allResults.push(result);
-
-      // Display result
       const hasErrors = result.errors.length > 0;
       const hasWarnings = result.warnings.length > 0;
-
-      if (!hasErrors && !hasWarnings) {
-        console.log(`  ${c.green}✅ ${name}${c.reset}${c.dim}      ${result.passed}/${result.total} checks passed${c.reset}`);
-      } else if (hasErrors) {
-        console.log(`  ${c.red}❌ ${name}${c.reset}${c.dim}      ${result.passed}/${result.total} checks passed${c.reset}`);
-      } else {
-        console.log(`  ${c.yellow}⚠️  ${name}${c.reset}${c.dim}      ${result.passed}/${result.total} checks passed${c.reset}`);
-      }
-
-      // Show details in verbose mode or for errors
-      if (flags.verbose || hasErrors) {
-        for (const err of result.errors) {
-          console.log(`     ${c.red}✗ ${err}${c.reset}`);
-        }
-      }
-      if (flags.verbose || hasWarnings) {
-        for (const warn of result.warnings) {
-          console.log(`     ${c.yellow}⚠ ${warn}${c.reset}`);
-        }
-      }
+      const status = hasErrors ? 'fail' : hasWarnings ? 'warn' : 'pass';
+      results.push({ ...result, name, key, status });
     } catch (err) {
-      console.log(`  ${c.red}💥 ${name} — validator crashed: ${err.message}${c.reset}`);
-      allResults.push({ name, errors: [err.message], warnings: [], passed: 0, total: 1 });
+      results.push({ name, key, status: 'fail', errors: [err.message], warnings: [], passed: 0, total: 1 });
+    }
+  }
+
+  const activeResults = results.filter(r => r.status !== 'skipped');
+  const totalErrors = activeResults.reduce((sum, r) => sum + r.errors.length, 0);
+  const totalWarnings = activeResults.reduce((sum, r) => sum + r.warnings.length, 0);
+  const totalPassed = activeResults.reduce((sum, r) => sum + r.passed, 0);
+  const totalChecks = activeResults.reduce((sum, r) => sum + r.total, 0);
+
+  const overallStatus = totalErrors > 0 ? 'FAIL' : totalWarnings > 0 ? 'WARN' : 'PASS';
+
+  return {
+    project: config.projectName,
+    profile: config.profile || 'standard',
+    status: overallStatus,
+    passed: totalPassed,
+    total: totalChecks,
+    errors: totalErrors,
+    warnings: totalWarnings,
+    validators: results,
+    timestamp: new Date().toISOString(),
+  };
+}
+
+/**
+ * Public guard — prints results and exits.
+ */
+export function runGuard(projectDir, config, flags) {
+  const data = runGuardInternal(projectDir, config);
+
+  // ── JSON output ──
+  if (flags.format === 'json') {
+    console.log(JSON.stringify(data, null, 2));
+    if (data.errors > 0) process.exit(1);
+    if (data.warnings > 0) process.exit(2);
+    process.exit(0);
+  }
+
+  // ── Text output ──
+  console.log(`${c.bold}🛡️  SpecGuard Guard — ${config.projectName}${c.reset}`);
+  console.log(`${c.dim}   Directory: ${projectDir}${c.reset}\n`);
+
+  for (const v of data.validators) {
+    if (v.status === 'skipped') {
+      if (flags.verbose) {
+        console.log(`  ${c.dim}⏭️  ${v.name} (disabled)${c.reset}`);
+      }
+      continue;
+    }
+
+    if (v.status === 'pass') {
+      console.log(`  ${c.green}✅ ${v.name}${c.reset}${c.dim}      ${v.passed}/${v.total} checks passed${c.reset}`);
+    } else if (v.status === 'fail') {
+      console.log(`  ${c.red}❌ ${v.name}${c.reset}${c.dim}      ${v.passed}/${v.total} checks passed${c.reset}`);
+    } else {
+      console.log(`  ${c.yellow}⚠️  ${v.name}${c.reset}${c.dim}      ${v.passed}/${v.total} checks passed${c.reset}`);
+    }
+
+    if (flags.verbose || v.status === 'fail') {
+      for (const err of v.errors) {
+        console.log(`     ${c.red}✗ ${err}${c.reset}`);
+      }
+    }
+    if (flags.verbose || v.status === 'warn') {
+      for (const warn of v.warnings) {
+        console.log(`     ${c.yellow}⚠ ${warn}${c.reset}`);
+      }
     }
   }
 
   // Summary
-  const totalErrors = allResults.reduce((sum, r) => sum + r.errors.length, 0);
-  const totalWarnings = allResults.reduce((sum, r) => sum + r.warnings.length, 0);
-  const totalPassed = allResults.reduce((sum, r) => sum + r.passed, 0);
-  const totalChecks = allResults.reduce((sum, r) => sum + r.total, 0);
-
   console.log(`\n${c.bold}  ─────────────────────────────────────${c.reset}`);
 
-  if (totalErrors === 0 && totalWarnings === 0) {
-    console.log(`  ${c.green}${c.bold}✅ PASS${c.reset} ${c.green}— All ${totalChecks} checks passed${c.reset}`);
-  } else if (totalErrors === 0) {
-    console.log(`  ${c.yellow}${c.bold}⚠️  WARN${c.reset} ${c.yellow}— ${totalPassed}/${totalChecks} passed, ${totalWarnings} warning(s)${c.reset}`);
+  if (data.status === 'PASS') {
+    console.log(`  ${c.green}${c.bold}✅ PASS${c.reset} ${c.green}— All ${data.total} checks passed${c.reset}`);
+  } else if (data.status === 'WARN') {
+    console.log(`  ${c.yellow}${c.bold}⚠️  WARN${c.reset} ${c.yellow}— ${data.passed}/${data.total} passed, ${data.warnings} warning(s)${c.reset}`);
   } else {
-    console.log(`  ${c.red}${c.bold}❌ FAIL${c.reset} ${c.red}— ${totalPassed}/${totalChecks} passed, ${totalErrors} error(s), ${totalWarnings} warning(s)${c.reset}`);
+    console.log(`  ${c.red}${c.bold}❌ FAIL${c.reset} ${c.red}— ${data.passed}/${data.total} passed, ${data.errors} error(s), ${data.warnings} warning(s)${c.reset}`);
+  }
+
+  // Next step hint — always point to diagnose when issues exist
+  if (data.status !== 'PASS') {
+    console.log(`  ${c.dim}Run ${c.cyan}specguard diagnose${c.dim} to get AI fix prompts.${c.reset}`);
   }
 
   console.log('');
 
-  // Exit code
-  if (totalErrors > 0) {
-    process.exit(1);
-  } else if (totalWarnings > 0) {
-    process.exit(2);
-  } else {
-    process.exit(0);
-  }
+  if (data.errors > 0) process.exit(1);
+  if (data.warnings > 0) process.exit(2);
+  process.exit(0);
 }

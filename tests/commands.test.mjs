@@ -268,3 +268,64 @@ describe('score --tax', () => {
     assert.match(output, /Tax-to-value ratio/);
   });
 });
+
+describe('specguard diagnose', () => {
+  it('outputs remediation plan', () => {
+    const output = run('diagnose');
+    assert.match(output, /Diagnose/);
+    // Should have either "All clear" or remediation content
+    assert.ok(output.includes('Remediation') || output.includes('All clear'));
+  });
+
+  it('outputs valid JSON with --format json', () => {
+    const output = run('diagnose --format json');
+    // Extract JSON from output (skip banner)
+    const jsonStart = output.indexOf('{');
+    assert.ok(jsonStart >= 0, 'Should contain JSON');
+    const json = JSON.parse(output.slice(jsonStart));
+    assert.ok('issues' in json);
+    assert.ok('fixCommands' in json);
+    assert.ok('score' in json);
+  });
+});
+
+describe('guard --format json', () => {
+  it('outputs valid JSON', () => {
+    let output;
+    try {
+      output = run('guard --format json');
+    } catch (e) {
+      output = e.stdout || '';
+    }
+    const jsonStart = output.indexOf('{');
+    assert.ok(jsonStart >= 0, 'Should contain JSON');
+    const json = JSON.parse(output.slice(jsonStart));
+    assert.ok('validators' in json);
+    assert.ok('status' in json);
+    assert.ok('profile' in json);
+  });
+
+  it('shows diagnose hint on warnings', () => {
+    try {
+      run('guard');
+    } catch (e) {
+      const output = e.stdout || '';
+      if (output.includes('WARN') || output.includes('FAIL')) {
+        assert.match(output, /diagnose/);
+      }
+    }
+  });
+});
+
+describe('help completeness v0.5', () => {
+  it('lists diagnose command', () => {
+    const output = run('--help');
+    assert.match(output, /diagnose/);
+    assert.match(output, /AI orchestrator/);
+  });
+
+  it('shows v0.5.0', () => {
+    const output = run('--version');
+    assert.match(output, /0\.5\.0/);
+  });
+});

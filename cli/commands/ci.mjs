@@ -1,21 +1,16 @@
 /**
  * CI Command — Single command for CI/CD pipelines
- * Runs guard + score and exits with appropriate code.
- * 
+ * Uses runGuardInternal directly (no subprocess) for reliability.
+ *
  * Exit codes:
  *   0 = All pass, score meets threshold
  *   1 = Guard errors or score below threshold
  *   2 = Guard warnings only
  */
 
-import { execSync } from 'node:child_process';
-import { resolve, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { c } from '../specguard.mjs';
+import { runGuardInternal } from './guard.mjs';
 import { runScoreInternal } from './score.mjs';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const CLI_PATH = resolve(__dirname, '..', 'specguard.mjs');
 
 export function runCI(projectDir, config, flags) {
   const threshold = parseInt(flags.threshold || '0', 10);
@@ -29,26 +24,10 @@ export function runCI(projectDir, config, flags) {
     console.log('');
   }
 
-  // ── Run guard ──
-  let guardExitCode = 0;
-  let guardOutput = '';
-  try {
-    guardOutput = execSync(`node ${CLI_PATH} guard --dir "${projectDir}"`, {
-      encoding: 'utf-8',
-      env: { ...process.env, NO_COLOR: '1' },
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
-  } catch (e) {
-    guardExitCode = e.status || 1;
-    guardOutput = (e.stdout || '') + (e.stderr || '');
-  }
-
-  // Parse guard results from output
-  const passMatch = guardOutput.match(/(\d+)\/(\d+)/);
-  const totalPassed = passMatch ? parseInt(passMatch[1]) : 0;
-  const totalChecks = passMatch ? parseInt(passMatch[2]) : 0;
-  const hasErrors = guardExitCode === 1;
-  const hasWarnings = guardExitCode === 2;
+  // ── Run guard (internal — no subprocess) ──
+  const guardData = runGuardInternal(projectDir, config);
+  const hasErrors = guardData.errors > 0;
+  const hasWarnings = guardData.warnings > 0;
 
   // ── Get score ──
   const scoreData = runScoreInternal(projectDir, config);
@@ -57,13 +36,15 @@ export function runCI(projectDir, config, flags) {
   if (isJson) {
     const result = {
       project: config.projectName,
+      profile: config.profile || 'standard',
       projectType: config.projectType || 'unknown',
       score: scoreData.score,
       grade: scoreData.grade,
       guard: {
-        passed: totalPassed,
-        total: totalChecks,
-        status: hasErrors ? 'FAIL' : hasWarnings ? 'WARN' : 'PASS',
+        passed: guardData.passed,
+        total: guardData.total,
+        status: guardData.status,
+        validators: guardData.validators.filter(v => v.status !== 'skipped'),
       },
       threshold,
       thresholdMet: threshold <= 0 || scoreData.score >= threshold,
@@ -79,7 +60,7 @@ export function runCI(projectDir, config, flags) {
       ? `${c.yellow}⚠️  WARN${c.reset}`
       : `${c.green}✅ PASS${c.reset}`;
 
-    console.log(`  ${c.bold}Guard:${c.reset}  ${guardStatus}  (${totalPassed}/${totalChecks})`);
+    console.log(`  ${c.bold}Guard:${c.reset}  ${guardStatus}  (${guardData.passed}/${guardData.total})`);
     console.log(`  ${c.bold}Score:${c.reset}  ${scoreData.score}/100 (${scoreData.grade})`);
 
     if (threshold > 0) {

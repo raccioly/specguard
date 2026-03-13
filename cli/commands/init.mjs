@@ -210,18 +210,40 @@ export function runInit(projectDir, config, flags) {
     console.log(`  ${c.yellow}Skipped:${c.reset} ${skipped.length} files (already exist)`);
   }
 
-  console.log(`
-  ${c.bold}Next steps:${c.reset}
-  ${c.dim}The docs are skeleton templates — they need real content.${c.reset}
-  ${c.dim}Your AI agent will write them. Just run:${c.reset}
+  if (flags.skipPrompts) {
+    // Simple instructions, no AI prompts
+    console.log(`\n  ${c.bold}Next steps:${c.reset}`);
+    console.log(`  ${c.dim}Run${c.reset} ${c.cyan}specguard diagnose${c.reset} ${c.dim}to get AI prompts for filling docs.${c.reset}`);
+    console.log(`  ${c.dim}Then verify:${c.reset} ${c.cyan}specguard guard${c.reset}\n`);
+  } else {
+    // Auto-populate: output AI research prompts for each created canonical doc
+    const createdDocs = created.filter(f => f.startsWith('docs-canonical/'));
 
-  ${c.cyan}specguard fix --doc architecture${c.reset}  ${c.dim}← AI research prompt for each doc${c.reset}
-  ${c.cyan}specguard fix --doc data-model${c.reset}
-  ${c.cyan}specguard fix --doc security${c.reset}
-  ${c.cyan}specguard fix --doc test-spec${c.reset}
-  ${c.cyan}specguard fix --doc environment${c.reset}
+    if (createdDocs.length > 0) {
+      console.log(`\n  ${c.bold}🤖 AI Auto-Populate${c.reset}`);
+      console.log(`  ${c.dim}The files above are skeleton templates. Your AI agent should fill them.${c.reset}`);
+      console.log(`  ${c.dim}Run this single command to get a full remediation plan:${c.reset}\n`);
+      console.log(`  ${c.cyan}${c.bold}specguard diagnose${c.reset}\n`);
+      console.log(`  ${c.dim}Or generate prompts for individual docs:${c.reset}`);
 
-  ${c.dim}Then verify:${c.reset} ${c.cyan}specguard guard${c.reset}
-`);
+      const docNameMap = {
+        'docs-canonical/ARCHITECTURE.md': 'architecture',
+        'docs-canonical/DATA-MODEL.md': 'data-model',
+        'docs-canonical/SECURITY.md': 'security',
+        'docs-canonical/TEST-SPEC.md': 'test-spec',
+        'docs-canonical/ENVIRONMENT.md': 'environment',
+      };
+
+      for (const doc of createdDocs) {
+        const target = docNameMap[doc];
+        if (target) {
+          console.log(`  ${c.cyan}specguard fix --doc ${target}${c.reset}`);
+        }
+      }
+      console.log(`\n  ${c.dim}Then verify:${c.reset} ${c.cyan}specguard guard${c.reset}\n`);
+    } else {
+      console.log(`\n  ${c.dim}Run${c.reset} ${c.cyan}specguard diagnose${c.reset} ${c.dim}to check for issues.${c.reset}\n`);
+    }
+  }
 }
 

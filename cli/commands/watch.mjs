@@ -3,12 +3,14 @@
  * 
  * Like `jest --watch` but for CDD compliance.
  * Uses Node.js fs.watch (zero dependencies).
+ *
+ * --auto-fix: When guard finds issues, output AI fix prompts automatically.
  */
 
 import { watch as fsWatch, existsSync, readdirSync, statSync } from 'node:fs';
 import { resolve, relative, extname } from 'node:path';
 import { c } from '../specguard.mjs';
-import { runGuard } from './guard.mjs';
+import { runGuardInternal } from './guard.mjs';
 
 const DEBOUNCE_MS = 500;
 const IGNORE_DIRS = new Set([
@@ -22,6 +24,9 @@ const WATCH_EXTS = new Set([
 export function runWatch(projectDir, config, flags) {
   console.log(`${c.bold}👁️  SpecGuard Watch — ${config.projectName}${c.reset}`);
   console.log(`${c.dim}   Directory: ${projectDir}${c.reset}`);
+  if (flags.autoFix) {
+    console.log(`${c.cyan}   Mode: auto-fix (will output AI prompts on failures)${c.reset}`);
+  }
   console.log(`${c.dim}   Watching for changes... (Ctrl+C to stop)${c.reset}\n`);
 
   // Run guard immediately on start
@@ -70,10 +75,38 @@ function runGuardQuiet(projectDir, config, flags) {
   console.log(`${c.dim}   [${timestamp}] Running guard...${c.reset}`);
 
   try {
-    runGuard(projectDir, config, { ...flags, format: 'text' });
-  } catch {
-    // Guard may throw on critical errors
-    console.log(`${c.red}   Guard failed — check output above${c.reset}`);
+    const data = runGuardInternal(projectDir, config);
+
+    if (data.status === 'PASS') {
+      console.log(`  ${c.green}✅ PASS${c.reset} — ${data.passed}/${data.total} checks passed`);
+    } else if (data.status === 'WARN') {
+      console.log(`  ${c.yellow}⚠️  WARN${c.reset} — ${data.passed}/${data.total} passed, ${data.warnings} warning(s)`);
+    } else {
+      console.log(`  ${c.red}❌ FAIL${c.reset} — ${data.passed}/${data.total} passed, ${data.errors} error(s)`);
+    }
+
+    // Auto-fix: output fix prompts for failures
+    if (flags.autoFix && data.status !== 'PASS') {
+      console.log(`\n  ${c.cyan}${c.bold}🤖 Auto-fix prompts:${c.reset}`);
+
+      for (const v of data.validators) {
+        if (v.status === 'pass' || v.status === 'skipped') continue;
+
+        const docMap = { 'Architecture': 'architecture', 'Security': 'security', 'Test-Spec': 'test-spec', 'Environment': 'environment' };
+        const docTarget = docMap[v.name];
+
+        for (const msg of [...v.errors, ...v.warnings]) {
+          console.log(`  ${c.yellow}→${c.reset} [${v.name}] ${msg}`);
+          if (docTarget) {
+            console.log(`    ${c.dim}Fix: specguard fix --doc ${docTarget}${c.reset}`);
+          }
+        }
+      }
+
+      console.log(`\n  ${c.dim}Or run: specguard diagnose (for full AI remediation prompt)${c.reset}`);
+    }
+  } catch (err) {
+    console.log(`${c.red}   Guard failed: ${err.message}${c.reset}`);
   }
 }
 
