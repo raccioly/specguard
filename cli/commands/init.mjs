@@ -88,6 +88,35 @@ export function runInit(projectDir, config, flags) {
     console.log(`  ${c.yellow}⏭️${c.reset}  .specguard.json ${c.dim}(already exists)${c.reset}`);
   }
 
+  // Install slash commands for AI agents
+  const commandsSourceDir = resolve(TEMPLATES_DIR, 'commands');
+  if (existsSync(commandsSourceDir)) {
+    const commandsDestDir = resolve(projectDir, '.github', 'commands');
+    if (!existsSync(commandsDestDir)) {
+      mkdirSync(commandsDestDir, { recursive: true });
+    }
+
+    const commandFiles = readdirSync(commandsSourceDir).filter(f => f.endsWith('.md'));
+    let commandsCreated = 0;
+
+    for (const file of commandFiles) {
+      const destPath = resolve(commandsDestDir, file);
+      if (!existsSync(destPath)) {
+        const content = readFileSync(resolve(commandsSourceDir, file), 'utf-8');
+        writeFileSync(destPath, content, 'utf-8');
+        commandsCreated++;
+      }
+    }
+
+    if (commandsCreated > 0) {
+      created.push(`.github/commands/ (${commandsCreated} slash commands)`);
+      console.log(`  ${c.green}✅${c.reset} Installed ${c.cyan}${commandsCreated} slash commands${c.reset} in .github/commands/`);
+      console.log(`  ${c.dim}   AI agents (Copilot, Claude Code, Cursor) auto-discover these${c.reset}`);
+    } else {
+      console.log(`  ${c.yellow}⏭️${c.reset}  .github/commands/ ${c.dim}(already exists)${c.reset}`);
+    }
+  }
+
   // Summary
   console.log(`\n${c.bold}  ─────────────────────────────────────${c.reset}`);
   console.log(`  ${c.green}Created:${c.reset} ${created.length} files`);
@@ -97,8 +126,16 @@ export function runInit(projectDir, config, flags) {
 
   console.log(`
   ${c.bold}Next steps:${c.reset}
-  ${c.dim}1.${c.reset} Fill in the canonical docs with your project details
-  ${c.dim}2.${c.reset} Run ${c.cyan}specguard audit${c.reset} to check your progress
-  ${c.dim}3.${c.reset} Run ${c.cyan}specguard guard${c.reset} to validate alignment
+  ${c.dim}The docs are skeleton templates — they need real content.${c.reset}
+  ${c.dim}Your AI agent will write them. Just run:${c.reset}
+
+  ${c.cyan}specguard fix --doc architecture${c.reset}  ${c.dim}← AI research prompt for each doc${c.reset}
+  ${c.cyan}specguard fix --doc data-model${c.reset}
+  ${c.cyan}specguard fix --doc security${c.reset}
+  ${c.cyan}specguard fix --doc test-spec${c.reset}
+  ${c.cyan}specguard fix --doc environment${c.reset}
+
+  ${c.dim}Then verify:${c.reset} ${c.cyan}specguard guard${c.reset}
 `);
 }
+

@@ -438,17 +438,9 @@ function generateDocPrompt(projectDir, config, docName) {
   const currentContent = exists ? readFileSync(fullPath, 'utf-8') : null;
   const quality = currentContent ? assessDocQuality(currentContent, expectations) : null;
 
-  console.log(`\n${c.bold}═══════════════════════════════════════════${c.reset}`);
-  console.log(`${c.bold}  AI PROMPT — ${expectations.label} Document${c.reset}`);
-  console.log(`${c.bold}═══════════════════════════════════════════${c.reset}`);
-  console.log(`${c.dim}  Copy everything below and paste into your AI assistant${c.reset}`);
-  console.log(`${c.dim}  (Copilot Chat, Cursor, Claude, Gemini, etc.)${c.reset}`);
-  console.log(`${c.bold}───────────────────────────────────────────${c.reset}\n`);
-
-  // Generate the prompt
   const action = !exists ? 'CREATE' : quality?.score === 'empty' ? 'REWRITE (current file is just a template)' : 'IMPROVE';
 
-  console.log(`You are documenting the project "${projectName}" (a ${projectType} project).`);
+  console.log(`\nYou are documenting the project "${projectName}" (a ${projectType} project).`);
   console.log(`Project directory: ${projectDir}\n`);
   console.log(`TASK: ${action} the file ${filePath}`);
   console.log(`PURPOSE: ${expectations.purpose}\n`);
@@ -463,9 +455,6 @@ function generateDocPrompt(projectDir, config, docName) {
   console.log(`\nVALIDATION: After writing, run \`npx specguard guard\` to verify the document passes all checks.`);
   console.log(`The document should have NO <!-- TODO --> or <!-- e.g. --> placeholders.`);
   console.log(`Set the specguard:status header to 'active' (not 'draft').`);
-
-  console.log(`\n${c.bold}───────────────────────────────────────────${c.reset}`);
-  console.log(`${c.dim}  End of prompt — paste the above into your AI assistant${c.reset}\n`);
 }
 
 // ── Auto-Fix (skeleton creation only) ──────────────────────────────────────
