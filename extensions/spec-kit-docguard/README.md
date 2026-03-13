@@ -11,7 +11,7 @@ Adds 6 DocGuard commands to Spec Kit:
 
 | Command | Description |
 |---------|-------------|
-| `speckit.docguard.guard` | Validate project against canonical docs (92 checks, 12 validators) |
+| `speckit.docguard.guard` | Validate project against canonical docs (108 checks, 14 validators) |
 | `speckit.docguard.diagnose` | Diagnose issues + generate AI-ready fix prompts |
 | `speckit.docguard.score` | CDD maturity score (0-100) with multi-signal breakdown |
 | `speckit.docguard.trace` | Requirements traceability matrix (ISO 29119) |

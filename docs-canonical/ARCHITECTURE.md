@@ -25,10 +25,11 @@ It targets development teams and AI coding agents that need to maintain document
 |-----------|---------------|----------|-----------|
 | **CLI Entry Point** | Argument parsing, config loading, command routing | `cli/` | `docguard.mjs` |
 | **Commands** | 11 user-facing commands (audit, init, guard, score, diff, agents, generate, hooks, badge, ci, fix) | `cli/commands/` | `*.mjs` |
-| **Validators** | 9 independent validation modules that check specific aspects of CDD compliance | `cli/validators/` | `*.mjs` |
+| **Validators** | 16 independent validation modules that check specific aspects of CDD compliance | `cli/validators/` | `*.mjs` |
 | **Templates** | Document skeletons (ARCHITECTURE, SECURITY, etc.) and slash command files for AI agents | `templates/` | `*.template`, `commands/*.md` |
 | **VS Code Extension** | Status bar score, inline diagnostics, Code Actions, file watchers | `vscode-extension/` | `extension.js`, `package.json` |
 | **Tests** | Command-level integration tests using `node:test` | `tests/` | `commands.test.mjs` |
+| **Scanners** | Project file scanners for test discovery, route detection, service mapping | `cli/scanners/` | `*.mjs` |
 
 ## Tech Stack
 
@@ -40,6 +41,17 @@ It targets development teams and AI coding agents that need to maintain document
 | Package Manager | npm | Standard for Node.js CLIs |
 | Testing | `node:test` + `node:assert` | Built-in, no test framework dependency |
 | Extension | VS Code Extension API | Dominant editor market share |
+
+### Recognized Config Files
+
+DocGuard recognizes and validates these project config files:
+
+| File | Purpose |
+|------|---------|
+| `.docguard.json` | Project-level DocGuard configuration |
+| `.docguardignore` | Per-project file exclusions (like `.gitignore`) |
+| `vitest.config.ts` / `jest.config.ts` | Test runner config (scanned for custom test patterns) |
+| `.storybook/` | Component documentation tool (detected for docs-coverage) |
 
 ## Layer Boundaries
 

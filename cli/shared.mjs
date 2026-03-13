@@ -63,3 +63,44 @@ export const PROFILES = {
     },
   },
 };
+
+// ── .docguardignore Support ───────────────────────────────────────────────
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve, relative } from 'node:path';
+
+/**
+ * Load ignore patterns from .docguardignore (like .gitignore).
+ * Returns a function that checks if a relative path should be ignored.
+ *
+ * Format: one pattern per line, # comments, blank lines skipped.
+ * Supports simple glob: * (any chars), ** (any path segments).
+ *
+ * @param {string} projectDir - Project root
+ * @returns {(relPath: string) => boolean} - Returns true if file should be ignored
+ */
+export function loadIgnorePatterns(projectDir) {
+  const ignorePath = resolve(projectDir, '.docguardignore');
+  if (!existsSync(ignorePath)) return () => false;
+
+  let content;
+  try { content = readFileSync(ignorePath, 'utf-8'); } catch { return () => false; }
+
+  const patterns = content
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => line && !line.startsWith('#'))
+    .map(pattern => {
+      // Convert glob to regex:
+      // ** → match any path segments
+      // * → match any chars except /
+      // . → literal dot
+      const escaped = pattern
+        .replace(/\./g, '\\.')
+        .replace(/\*\*/g, '§§')     // temp placeholder
+        .replace(/\*/g, '[^/]*')
+        .replace(/§§/g, '.*');
+      return new RegExp(`^${escaped}$|/${escaped}$|^${escaped}/|/${escaped}/`);
+    });
+
+  return (relPath) => patterns.some(regex => regex.test(relPath));
+}

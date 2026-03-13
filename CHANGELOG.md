@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.2] - 2026-03-13
+
+### Added
+- **Docs-Coverage Validator** — detects undocumented code features: config files on disk, code-referenced configs (resolve/existsSync calls), source dirs not in ARCHITECTURE.md, README section completeness per Standard README spec.
+- **Metadata-Sync Validator** — cross-checks package.json version against extension.yml and markdown file references; context-aware matching (URLs, install commands, YAML only).
+- **Metrics-Consistency Validator** — catches stale hardcoded numbers in docs ("92 checks" when actual is 114); requires 2+ digit numbers and negative lookbehind for ratio patterns.
+- **`.docguardignore` support** — per-project file exclusions (like `.gitignore`), parsed by `loadIgnorePatterns()` in `shared.mjs`, integrated with Metrics-Consistency and Metadata-Sync validators.
+
+### Fixed
+- **Co-located test detection** — `generate` now recursively scans `src/**/__tests__/` and `*.test.*`/`*.spec.*` files; reads `vitest.config.ts`/`jest.config.ts` for custom patterns.
+- **Test files as source files** — test files are now filtered out of all source lists (services, routes, models, components, middlewares) before mapping.
+- **Diagnose suggest-only** — `diagnose` no longer auto-creates files by default; pass `--auto` to enable auto-fix. Shows actionable suggestions when not in auto mode.
+- **Diagnose score cap** — target score in AI prompt now capped at 100 (was showing 105/100).
+
+### Changed
+- **Guard checks** — increased from 86 to 114 with 5 new validators (docs-coverage, metadata-sync, metrics-consistency, docs-diff, freshness).
+- **Validators** — increased from 9 to 14.
+
 ## [0.8.0] - 2026-03-13
 
 ### Added

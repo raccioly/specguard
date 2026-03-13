@@ -104,13 +104,13 @@ export function runDiagnose(projectDir, config, flags) {
   // ── Step 2: Collect issues ──
   let issues = collectIssues(guardData);
 
-  // ── Step 3: Auto-fix what we can (unless --no-fix) ──
-  const shouldAutoFix = !flags.noFix && flags.format !== 'json';
-  if (shouldAutoFix && issues.length > 0) {
+  // ── Step 3: Auto-fix (only with --auto flag) or suggest fixes ──
+  const shouldAutoFix = flags.auto && flags.format !== 'json';
+  if (issues.length > 0) {
     const autoFixable = issues.filter(i => i.autoFixable);
     const hasStructural = issues.some(i => i.validator === 'Structure');
 
-    if (hasStructural || autoFixable.length > 0) {
+    if (shouldAutoFix && (hasStructural || autoFixable.length > 0)) {
       // Run init to create missing files
       try {
         const cliPath = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'docguard.mjs');
@@ -139,6 +139,12 @@ export function runDiagnose(projectDir, config, flags) {
           console.log(`  ${c.green}⚡ Auto-fixed ${fixedCount} issue(s)${c.reset} (created/regenerated docs)\n`);
         }
       }
+    } else if (!shouldAutoFix && (hasStructural || autoFixable.length > 0) && (!flags.format || flags.format === 'text')) {
+      // Suggest-only mode: tell user what they can do
+      console.log(`  ${c.yellow}💡 ${autoFixable.length + (hasStructural ? 1 : 0)} issue(s) can be auto-fixed.${c.reset} Run with ${c.cyan}--auto${c.reset} to create/regenerate docs, or manually:`);
+      if (hasStructural) console.log(`     ${c.dim}docguard init --dir .${c.reset}`);
+      if (autoFixable.length > 0) console.log(`     ${c.dim}docguard generate --dir . --force${c.reset}`);
+      console.log('');
     }
   }
 
@@ -341,7 +347,7 @@ function outputPrompt(projectDir, guardData, scoreData, issues, flags) {
   lines.push('VALIDATION:');
   lines.push('After making all fixes, run: docguard guard');
   lines.push('Expected result: All checks pass (0 errors, 0 warnings)');
-  lines.push(`Target score: ≥${scoreData.score + 5}/100`);
+  lines.push(`Target score: ≥${Math.min(scoreData.score + 5, 100)}/100`);
 
   // Agent-aware: add explicit checklist for basic-tier agents
   if (agentTier === 'basic') {

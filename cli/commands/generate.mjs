@@ -318,7 +318,7 @@ function scanProject(dir) {
     }
   });
 
-  // Find tests
+  // Find tests — top-level test dirs
   ['tests', 'test', '__tests__', 'spec', 'e2e'].forEach(testDir => {
     const fullDir = resolve(dir, testDir);
     if (existsSync(fullDir)) {
@@ -328,6 +328,55 @@ function scanProject(dir) {
       }
     }
   });
+
+  // Find co-located tests: src/**/__tests__/ and src/**/*.test.* / src/**/*.spec.*
+  const srcDir = resolve(dir, 'src');
+  if (existsSync(srcDir)) {
+    walkDir(srcDir, (filePath) => {
+      const rel = relative(dir, filePath);
+      const isTestDir = rel.includes('__tests__') || rel.includes('__test__');
+      const isTestFile = /\.(test|spec)\.[^.]+$/.test(rel);
+      if ((isTestDir || isTestFile) && !scan.tests.includes(rel)) {
+        scan.tests.push(rel);
+      }
+    });
+  }
+
+  // Read vitest/jest config for custom test patterns
+  const testConfigs = ['vitest.config.ts', 'vitest.config.js', 'vitest.config.mts', 'jest.config.ts', 'jest.config.js'];
+  for (const cfgFile of testConfigs) {
+    const cfgPath = resolve(dir, cfgFile);
+    if (existsSync(cfgPath)) {
+      try {
+        const cfgContent = readFileSync(cfgPath, 'utf-8');
+        // Extract include patterns like: include: ['src/**/*.test.ts']
+        const includeMatch = cfgContent.match(/include\s*:\s*\[([^\]]+)\]/);
+        if (includeMatch) {
+          // Parse the test root from the pattern (e.g., 'src/**/*.test.ts' → 'src')
+          const patterns = includeMatch[1].match(/['"]([^'"]+)['"]/g);
+          if (patterns) {
+            for (const p of patterns) {
+              const pattern = p.replace(/['"]|\s/g, '');
+              // Extract root dir from glob (e.g., 'src/**/*.test.ts' → 'src')
+              const rootDir = pattern.split('/')[0];
+              if (rootDir && rootDir !== '**' && rootDir !== '*') {
+                const fullDir = resolve(dir, rootDir);
+                if (existsSync(fullDir)) {
+                  walkDir(fullDir, (filePath) => {
+                    const rel = relative(dir, filePath);
+                    if (/\.(test|spec)\.[^.]+$/.test(rel) && !scan.tests.includes(rel)) {
+                      scan.tests.push(rel);
+                    }
+                  });
+                }
+              }
+            }
+          }
+        }
+      } catch { /* config parse may fail */ }
+      break; // Use first found config
+    }
+  }
 
   // Find components
   ['src/components', 'components', 'src/ui'].forEach(compDir => {
@@ -366,6 +415,15 @@ function scanProject(dir) {
 
   // Count files and lines
   countFilesAndLines(dir, scan);
+
+  // ── Filter test files out of source lists ──
+  // Test files (*.test.*, *.spec.*, __tests__/) should NOT appear as source files
+  const isTestFile = (f) => f.includes('__tests__') || f.includes('__test__') || /\.(test|spec)\.[^.]+$/.test(f);
+  scan.routes = scan.routes.filter(f => !isTestFile(f));
+  scan.models = scan.models.filter(f => !isTestFile(f));
+  scan.services = scan.services.filter(f => !isTestFile(f));
+  scan.components = scan.components.filter(f => !isTestFile(f));
+  scan.middlewares = scan.middlewares.filter(f => !isTestFile(f));
 
   return scan;
 }

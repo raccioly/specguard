@@ -81,6 +81,27 @@ diagnose  →  AI reads prompts  →  AI fixes docs  →  guard verifies
 
 ---
 
+## Usage
+
+```bash
+# Initialize CDD docs for your project
+npx docguard-cli init
+
+# Reverse-engineer docs from existing code
+npx docguard-cli generate
+
+# Validate project — use as CI gate
+npx docguard-cli guard
+
+# Get AI-actionable fix prompts
+npx docguard-cli diagnose
+
+# Check CDD maturity score
+npx docguard-cli score
+```
+
+---
+
 ## 13 Commands
 
 ### 🔮 Generate — Reverse-engineer docs from code
@@ -202,7 +223,7 @@ $ npx docguard-cli guard
 
 ---
 
-## 9 Validators
+## 14 Validators
 
 | # | Validator | What It Checks | Default |
 |---|-----------|---------------|---------| 
@@ -213,8 +234,15 @@ $ npx docguard-cli guard
 | 5 | **Changelog** | CHANGELOG.md has [Unreleased] section | ✅ On |
 | 6 | **Test-Spec** | Tests exist per TEST-SPEC.md rules | ✅ On |
 | 7 | **Environment** | Env vars documented, .env.example exists | ✅ On |
-| 8 | **Security** | No hardcoded secrets in source code | ❌ Off |
-| 9 | **Architecture** | Imports follow layer boundaries | ❌ Off |
+| 8 | **Security** | No hardcoded secrets in source code | ✅ On |
+| 9 | **Architecture** | Imports follow layer boundaries | ✅ On |
+| 10 | **Freshness** | Docs not stale relative to code changes | ✅ On |
+| 11 | **Traceability** | Canonical docs linked to source code | ✅ On |
+| 12 | **Docs-Diff** | Code artifacts match documented entities | ✅ On |
+| 13 | **Metadata-Sync** | Version refs consistent across docs | ✅ On |
+| 14 | **Docs-Coverage** | Code features referenced in documentation | ✅ On |
+| 15 | **Metrics-Consistency** | Hardcoded numbers match actual counts | ✅ On |
+| 16 | **Docs-Sync** | Source files have matching doc entries | ✅ On |
 
 ---
 

@@ -19,6 +19,9 @@ import { validateArchitecture } from '../validators/architecture.mjs';
 import { validateFreshness } from '../validators/freshness.mjs';
 import { validateTraceability } from '../validators/traceability.mjs';
 import { validateDocsDiff } from '../validators/docs-diff.mjs';
+import { validateMetadataSync } from '../validators/metadata-sync.mjs';
+import { validateMetricsConsistency } from '../validators/metrics-consistency.mjs';
+import { validateDocsCoverage } from '../validators/docs-coverage.mjs';
 
 /**
  * Internal guard — returns structured data, no console output, no process.exit.
@@ -52,6 +55,9 @@ export function runGuardInternal(projectDir, config) {
     }},
     { key: 'traceability', name: 'Traceability', fn: () => validateTraceability(projectDir, config) },
     { key: 'docsDiff', name: 'Docs-Diff', fn: () => validateDocsDiff(projectDir, config) },
+    { key: 'metadataSync', name: 'Metadata-Sync', fn: () => validateMetadataSync(projectDir, config) },
+    { key: 'docsCoverage', name: 'Docs-Coverage', fn: () => validateDocsCoverage(projectDir, config) },
+    // Metrics-Consistency runs post-loop (needs guard results)
   ];
 
   for (const { key, name, fn } of validatorMap) {
@@ -81,6 +87,21 @@ export function runGuardInternal(projectDir, config) {
       results.push({ ...result, name, key, status, quality });
     } catch (err) {
       results.push({ name, key, status: 'fail', quality: 'LOW', errors: [err.message], warnings: [], passed: 0, total: 1 });
+    }
+  }
+
+  // ── Metrics-Consistency runs AFTER all other validators (needs their results) ──
+  if (validators.metricsConsistency !== false) {
+    try {
+      const result = validateMetricsConsistency(projectDir, config, results);
+      const hasErrors = result.errors.length > 0;
+      const hasWarnings = result.warnings.length > 0;
+      const status = hasErrors ? 'fail' : hasWarnings ? 'warn' : 'pass';
+      const ratio = result.total > 0 ? result.passed / result.total : 1;
+      const quality = hasErrors ? 'LOW' : hasWarnings ? 'MEDIUM' : ratio >= 0.9 ? 'HIGH' : 'MEDIUM';
+      results.push({ ...result, name: 'Metrics-Consistency', key: 'metricsConsistency', status, quality });
+    } catch (err) {
+      results.push({ name: 'Metrics-Consistency', key: 'metricsConsistency', status: 'fail', quality: 'LOW', errors: [err.message], warnings: [], passed: 0, total: 1 });
     }
   }
 
