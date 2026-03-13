@@ -1,0 +1,66 @@
+schema_version: "1.0"
+
+extension:
+  id: "docguard"
+  name: "DocGuard — CDD Enforcement"
+  version: "0.7.2"
+  description: "Canonical-Driven Development enforcement. Generates, validates, scores, and traces your project documentation against 51 automated checks. Zero dependencies."
+  author: "Ricardo Accioly"
+  repository: "https://github.com/raccioly/docguard"
+  license: "MIT"
+  homepage: "https://www.npmjs.com/package/docguard-cli"
+
+requires:
+  speckit_version: ">=0.1.0"
+  tools:
+    - name: "node"
+      required: true
+      version: ">=18.0.0"
+    - name: "npx"
+      required: true
+
+provides:
+  commands:
+    - name: "speckit.docguard.guard"
+      file: "commands/guard.md"
+      description: "Validate project against canonical documentation (51 checks)"
+      aliases: ["speckit.guard"]
+
+    - name: "speckit.docguard.diagnose"
+      file: "commands/diagnose.md"
+      description: "Diagnose issues and generate AI-ready fix prompts"
+      aliases: ["speckit.diagnose"]
+
+    - name: "speckit.docguard.score"
+      file: "commands/score.md"
+      description: "Calculate CDD maturity score (0-100) with multi-signal breakdown"
+      aliases: ["speckit.score"]
+
+    - name: "speckit.docguard.trace"
+      file: "commands/trace.md"
+      description: "Generate requirements traceability matrix (ISO 29119)"
+      aliases: ["speckit.trace"]
+
+    - name: "speckit.docguard.generate"
+      file: "commands/generate.md"
+      description: "Reverse-engineer canonical docs from existing codebase"
+      aliases: ["speckit.generate"]
+
+    - name: "speckit.docguard.init"
+      file: "commands/init.md"
+      description: "Initialize CDD in a project with compliance profiles"
+
+hooks:
+  after_tasks:
+    command: "speckit.docguard.guard"
+    optional: true
+    prompt: "Run DocGuard validation?"
+
+tags:
+  - "documentation"
+  - "validation"
+  - "quality"
+  - "cdd"
+  - "traceability"
+  - "ai-agents"
+  - "enforcement"
