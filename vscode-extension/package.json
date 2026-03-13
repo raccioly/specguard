@@ -1,0 +1,85 @@
+{
+  "name": "specguard-vscode",
+  "displayName": "SpecGuard — CDD Compliance",
+  "description": "Canonical-Driven Development (CDD) enforcement for VS Code. Inline warnings, CDD score in status bar, and guard commands.",
+  "version": "0.4.0",
+  "publisher": "raccioly",
+  "icon": "icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/raccioly/specguard"
+  },
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": ["Linters", "Other"],
+  "keywords": [
+    "canonical-driven-development",
+    "cdd",
+    "documentation",
+    "specguard",
+    "governance"
+  ],
+  "activationEvents": [
+    "workspaceContains:.specguard.json",
+    "workspaceContains:docs-canonical",
+    "workspaceContains:AGENTS.md"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "specguard.audit",
+        "title": "SpecGuard: Audit Documentation"
+      },
+      {
+        "command": "specguard.guard",
+        "title": "SpecGuard: Guard (Validate)"
+      },
+      {
+        "command": "specguard.score",
+        "title": "SpecGuard: Show CDD Score"
+      },
+      {
+        "command": "specguard.badge",
+        "title": "SpecGuard: Generate Badges"
+      },
+      {
+        "command": "specguard.init",
+        "title": "SpecGuard: Initialize CDD Docs"
+      },
+      {
+        "command": "specguard.refresh",
+        "title": "SpecGuard: Refresh Score"
+      }
+    ],
+    "configuration": {
+      "title": "SpecGuard",
+      "properties": {
+        "specguard.autoRefresh": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically refresh CDD score when canonical docs change"
+        },
+        "specguard.showStatusBar": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show CDD score in the status bar"
+        },
+        "specguard.nodePath": {
+          "type": "string",
+          "default": "node",
+          "description": "Path to Node.js executable"
+        },
+        "specguard.scoreThreshold": {
+          "type": "number",
+          "default": 60,
+          "description": "Minimum acceptable CDD score (below this shows warning)"
+        }
+      }
+    }
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.80.0"
+  }
+}

@@ -99,7 +99,7 @@ Deep integration with development tools and platforms.
 - [x] Badge service (shields.io CDD score, type, guarded-by badges)
 - [x] CI command (guard + score pipeline, JSON output, thresholds)
 - [x] npm publish preparation (.npmignore, prepublishOnly, CI dry-run)
-- [ ] VS Code extension (inline CDD warnings) — future
+- [x] VS Code extension (status bar score, inline diagnostics, 6 commands)
 
 ## Phase 5: Dashboard 💭
 
