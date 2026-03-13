@@ -148,20 +148,45 @@ function diffEntities(dir) {
 
   // Extract entity names from DATA-MODEL.md (look for ### headers or table rows)
   const docEntities = new Set();
+
+  // Filter out template placeholders and common header noise
+  const HEADER_NOISE = new Set([
+    'EntityName', 'Entity', 'metadata', 'tbd', 'cascade', 'fields',
+    'purpose', 'version', 'author', 'example', 'TODO', 'Overview',
+    'Revision', 'History', 'Entities', 'Relationships', 'Indexes',
+    'Migration', 'Strategy',
+  ]);
+
   const headerRegex = /^### (\S+)/gm;
   let match;
   while ((match = headerRegex.exec(content)) !== null) {
     const name = match[1].replace(/[`*]/g, '');
-    if (name !== 'EntityName' && name.length > 1) {
-      docEntities.add(name.toLowerCase());
+    // Skip template placeholders (<!-- ... -->) and noise words
+    if (name.startsWith('<!--') || name.length <= 1 || HEADER_NOISE.has(name) || HEADER_NOISE.has(name.toLowerCase())) {
+      continue;
     }
+    docEntities.add(name.toLowerCase());
   }
 
   // Also check tables for entity references
   const tableRegex = /\|\s*(?:`)?(\w+)(?:`)?\s*\|/g;
+  // Filter out common table headers, template placeholders, and markdown noise
+  const TABLE_NOISE = new Set([
+    'entity', 'field', 'type', 'from', 'to', 'table', 'index', 'storage',
+    'required', 'default', 'constraints', 'description', 'name', 'value',
+    'status', 'version', 'category', 'technology', 'license', 'purpose',
+    'cascade', 'relationship', 'notes', 'date', 'author', 'changes',
+    'metadata', 'tbd', 'fields', 'todo', 'example', 'primary', 'key',
+    'none', 'see', 'detected', 'yes', 'no', 'all', 'the', 'for', 'not',
+    'add', 'database', 'orm', 'source', 'unit', 'test', 'integration',
+    'metric', 'target', 'current', 'journey', 'file', 'score', 'weight',
+    'weighted', 'method', 'provider', 'token', 'expiry', 'role',
+    'permissions', 'secret', 'rotation', 'access', 'variable', 'tool',
+    'command', 'run', 'component', 'responsibility', 'location', 'tests',
+  ]);
   while ((match = tableRegex.exec(content)) !== null) {
     const name = match[1];
-    if (name.length > 2 && !['Entity', 'Field', 'Type', 'From', 'To', 'Table', 'Index', 'Storage', 'Required', 'Default', 'Constraints', 'Description'].includes(name)) {
+    if (name.length > 2 && !TABLE_NOISE.has(name.toLowerCase())) {
       docEntities.add(name.toLowerCase());
     }
   }

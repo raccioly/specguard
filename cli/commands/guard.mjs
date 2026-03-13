@@ -12,6 +12,7 @@ import { validateEnvironment } from '../validators/environment.mjs';
 import { validateSecurity } from '../validators/security.mjs';
 import { validateDocsSync } from '../validators/docs-sync.mjs';
 import { validateArchitecture } from '../validators/architecture.mjs';
+import { validateFreshness } from '../validators/freshness.mjs';
 
 export function runGuard(projectDir, config, flags) {
   console.log(`${c.bold}🛡️  SpecGuard Guard — ${config.projectName}${c.reset}`);
@@ -31,6 +32,19 @@ export function runGuard(projectDir, config, flags) {
     { key: 'environment', name: 'Environment', fn: () => validateEnvironment(projectDir, config) },
     { key: 'security', name: 'Security', fn: () => validateSecurity(projectDir, config) },
     { key: 'architecture', name: 'Architecture', fn: () => validateArchitecture(projectDir, config) },
+    { key: 'freshness', name: 'Freshness', fn: () => {
+      const freshnessResults = validateFreshness(projectDir, config);
+      const errors = [];
+      const warnings = [];
+      let passed = 0;
+      for (const r of freshnessResults) {
+        if (r.status === 'pass') passed++;
+        else if (r.status === 'warn') warnings.push(r.message);
+        else if (r.status === 'fail') errors.push(r.message);
+        // skip = don't count
+      }
+      return { errors, warnings, passed, total: passed + warnings.length + errors.length };
+    }},
   ];
 
   for (const { key, name, fn } of validatorMap) {

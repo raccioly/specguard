@@ -1,5 +1,6 @@
 /**
  * Audit Command — Scan project, report what CDD docs exist or are missing
+ * Now uses the full documentTypes config to show ALL docs with categories.
  */
 
 import { existsSync } from 'node:fs';
@@ -10,124 +11,82 @@ export function runAudit(projectDir, config, flags) {
   console.log(`${c.bold}📋 SpecGuard Audit — ${config.projectName}${c.reset}`);
   console.log(`${c.dim}   Directory: ${projectDir}${c.reset}\n`);
 
-  const results = { found: 0, missing: 0, total: 0, details: [] };
+  const results = { found: 0, missing: 0, optional: 0, total: 0, details: [] };
 
-  // Check canonical docs
-  console.log(`${c.bold}  Canonical Documentation:${c.reset}`);
-  for (const file of config.requiredFiles.canonical) {
-    const fullPath = resolve(projectDir, file);
-    const exists = existsSync(fullPath);
-    results.total++;
-    if (exists) {
-      results.found++;
-      results.details.push({ file, status: 'found' });
-      console.log(`    ${c.green}✅${c.reset} ${file}`);
-    } else {
-      results.missing++;
-      results.details.push({ file, status: 'missing' });
-      console.log(`    ${c.red}❌${c.reset} ${file}`);
-    }
+  // Use documentTypes from config (all 16 doc types with required/optional)
+  const docTypes = config.documentTypes || {};
+
+  // Group by category
+  const categories = {};
+  for (const [filePath, meta] of Object.entries(docTypes)) {
+    const cat = meta.category || 'other';
+    if (!categories[cat]) categories[cat] = [];
+    categories[cat].push({ filePath, ...meta });
   }
 
-  // Check agent file (any of the options)
-  console.log(`\n${c.bold}  Agent Instructions:${c.reset}`);
-  const agentFileFound = config.requiredFiles.agentFile.some(f =>
-    existsSync(resolve(projectDir, f))
-  );
-  results.total++;
-  if (agentFileFound) {
-    results.found++;
-    const foundFile = config.requiredFiles.agentFile.find(f =>
-      existsSync(resolve(projectDir, f))
-    );
-    results.details.push({ file: foundFile, status: 'found' });
-    console.log(`    ${c.green}✅${c.reset} ${foundFile}`);
-  } else {
-    results.missing++;
-    results.details.push({
-      file: config.requiredFiles.agentFile.join(' or '),
-      status: 'missing',
-    });
-    console.log(
-      `    ${c.red}❌${c.reset} ${config.requiredFiles.agentFile.join(' or ')}`
-    );
-  }
+  // Category display names and order
+  const categoryLabels = {
+    canonical: '📘 Canonical Documentation (Design Intent)',
+    implementation: '📗 Implementation Documentation (Current State)',
+    agent: '🤖 Agent Instructions',
+    tracking: '📑 Change Tracking',
+  };
 
-  // Check changelog
-  console.log(`\n${c.bold}  Change Tracking:${c.reset}`);
-  const changelogPath = resolve(projectDir, config.requiredFiles.changelog);
-  results.total++;
-  if (existsSync(changelogPath)) {
-    results.found++;
-    results.details.push({ file: config.requiredFiles.changelog, status: 'found' });
-    console.log(`    ${c.green}✅${c.reset} ${config.requiredFiles.changelog}`);
-  } else {
-    results.missing++;
-    results.details.push({ file: config.requiredFiles.changelog, status: 'missing' });
-    console.log(`    ${c.red}❌${c.reset} ${config.requiredFiles.changelog}`);
-  }
+  const categoryOrder = ['canonical', 'implementation', 'agent', 'tracking'];
 
-  // Check drift log
-  const driftPath = resolve(projectDir, config.requiredFiles.driftLog);
-  results.total++;
-  if (existsSync(driftPath)) {
-    results.found++;
-    results.details.push({ file: config.requiredFiles.driftLog, status: 'found' });
-    console.log(`    ${c.green}✅${c.reset} ${config.requiredFiles.driftLog}`);
-  } else {
-    results.missing++;
-    results.details.push({ file: config.requiredFiles.driftLog, status: 'missing' });
-    console.log(`    ${c.red}❌${c.reset} ${config.requiredFiles.driftLog}`);
-  }
+  for (const cat of categoryOrder) {
+    const docs = categories[cat];
+    if (!docs || docs.length === 0) continue;
 
-  // Score
-  const pct = Math.round((results.found / results.total) * 100);
-  const scoreColor = pct >= 80 ? c.green : pct >= 50 ? c.yellow : c.red;
+    console.log(`${c.bold}  ${categoryLabels[cat] || cat}${c.reset}`);
 
-  console.log(`\n${c.bold}  ─────────────────────────────────────${c.reset}`);
-  console.log(
-    `  ${c.bold}Score:${c.reset} ${scoreColor}${results.found}/${results.total} required files (${pct}%)${c.reset}`
-  );
+    for (const doc of docs) {
+      const fullPath = resolve(projectDir, doc.filePath);
+      const exists = existsSync(fullPath);
 
-  if (results.missing > 0) {
-    console.log(
-      `\n  ${c.yellow}💡 Run ${c.cyan}specguard init${c.yellow} to create missing docs from templates.${c.reset}`
-    );
-  } else {
-    console.log(`\n  ${c.green}🎉 All CDD documentation present!${c.reset}`);
-    console.log(
-      `  ${c.dim}Run ${c.cyan}specguard guard${c.dim} to validate content alignment.${c.reset}`
-    );
-  }
-
-  console.log('');
-
-  // Check optional recommended files
-  if (flags.verbose) {
-    console.log(`${c.bold}  Recommended (Optional):${c.reset}`);
-    const recommended = [
-      'docs-canonical/FEATURES.md',
-      'docs-canonical/MESSAGE-FLOWS.md',
-      'docs-canonical/DEPLOYMENT.md',
-      'docs-canonical/ADR.md',
-      'docs-canonical/ERROR-CODES.md',
-      'docs-canonical/API-REFERENCE.md',
-      'docs-implementation/CURRENT-STATE.md',
-      'docs-implementation/TROUBLESHOOTING.md',
-      'docs-implementation/RUNBOOKS.md',
-      'docs-implementation/MIGRATION-GUIDE.md',
-      'AGENT-REFERENCE.md',
-      'CONTRIBUTING.md',
-    ];
-
-    for (const file of recommended) {
-      const exists = existsSync(resolve(projectDir, file));
-      console.log(
-        `    ${exists ? `${c.green}✅` : `${c.dim}○`}${c.reset} ${file}`
-      );
+      if (exists) {
+        results.found++;
+        results.total++;
+        results.details.push({ file: doc.filePath, status: 'found', required: doc.required });
+        console.log(`    ${c.green}✅${c.reset} ${doc.filePath} ${c.dim}— ${doc.description}${c.reset}`);
+      } else if (doc.required) {
+        results.missing++;
+        results.total++;
+        results.details.push({ file: doc.filePath, status: 'missing', required: true });
+        console.log(`    ${c.red}❌${c.reset} ${doc.filePath} ${c.dim}— ${doc.description}${c.reset} ${c.red}(required)${c.reset}`);
+      } else {
+        results.optional++;
+        results.details.push({ file: doc.filePath, status: 'optional', required: false });
+        if (flags.verbose) {
+          console.log(`    ${c.dim}○  ${doc.filePath} — ${doc.description} (optional)${c.reset}`);
+        }
+      }
     }
     console.log('');
   }
 
+  // Score (only required files)
+  const requiredTotal = results.found + results.missing;
+  const pct = requiredTotal === 0 ? 100 : Math.round((results.found / requiredTotal) * 100);
+  const scoreColor = pct >= 80 ? c.green : pct >= 50 ? c.yellow : c.red;
+
+  console.log(`${c.bold}  ─────────────────────────────────────${c.reset}`);
+  console.log(`  ${c.bold}Required:${c.reset} ${scoreColor}${results.found - (results.found - requiredTotal + results.missing)}/${requiredTotal} files (${pct}%)${c.reset}`);
+
+  // Show optional count
+  if (!flags.verbose && results.optional > 0) {
+    console.log(`  ${c.dim}Optional: ${results.optional} not present (use --verbose to see all)${c.reset}`);
+  }
+
+  if (results.missing > 0) {
+    console.log(`\n  ${c.yellow}💡 Run ${c.cyan}specguard init${c.yellow} to create missing docs from templates.${c.reset}`);
+    console.log(`  ${c.yellow}💡 Run ${c.cyan}specguard generate${c.yellow} to auto-fill docs from your codebase.${c.reset}`);
+  } else {
+    console.log(`\n  ${c.green}🎉 All required CDD documentation present!${c.reset}`);
+    console.log(`  ${c.dim}Run ${c.cyan}specguard guard${c.dim} to validate content alignment.${c.reset}`);
+    console.log(`  ${c.dim}Run ${c.cyan}specguard score${c.dim} to check your CDD maturity.${c.reset}`);
+  }
+
+  console.log('');
   return results;
 }

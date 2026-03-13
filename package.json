@@ -1,6 +1,6 @@
 {
   "name": "specguard",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "The enforcement tool for Canonical-Driven Development (CDD). Audit, generate, and guard your project documentation.",
   "type": "module",
   "bin": {

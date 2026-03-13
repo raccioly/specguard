@@ -45,7 +45,7 @@ export function loadConfig(projectDir) {
   const configPath = resolve(projectDir, '.specguard.json');
   const defaults = {
     projectName: basename(projectDir),
-    version: '0.1',
+    version: '0.2',
     requiredFiles: {
       canonical: [
         'docs-canonical/ARCHITECTURE.md',
@@ -57,6 +57,28 @@ export function loadConfig(projectDir) {
       agentFile: ['AGENTS.md', 'CLAUDE.md'],
       changelog: 'CHANGELOG.md',
       driftLog: 'DRIFT-LOG.md',
+    },
+    // All CDD document types — required vs optional
+    documentTypes: {
+      // Canonical (design intent) — required by default
+      'docs-canonical/ARCHITECTURE.md':  { required: true,  category: 'canonical',      description: 'System design, components, layer boundaries' },
+      'docs-canonical/DATA-MODEL.md':    { required: true,  category: 'canonical',      description: 'Database schemas, entities, relationships' },
+      'docs-canonical/SECURITY.md':      { required: true,  category: 'canonical',      description: 'Authentication, authorization, secrets management' },
+      'docs-canonical/TEST-SPEC.md':     { required: true,  category: 'canonical',      description: 'Test categories, coverage rules, service-to-test map' },
+      'docs-canonical/ENVIRONMENT.md':   { required: true,  category: 'canonical',      description: 'Environment variables, setup steps, prerequisites' },
+      'docs-canonical/DEPLOYMENT.md':    { required: false, category: 'canonical',      description: 'Infrastructure, CI/CD pipeline, DNS, monitoring' },
+      'docs-canonical/ADR.md':           { required: false, category: 'canonical',      description: 'Architecture Decision Records with rationale' },
+      // Implementation (current state) — optional by default
+      'docs-implementation/KNOWN-GOTCHAS.md':    { required: false, category: 'implementation', description: 'Lessons learned — symptom/gotcha/fix format' },
+      'docs-implementation/TROUBLESHOOTING.md':   { required: false, category: 'implementation', description: 'Error diagnosis guides by category' },
+      'docs-implementation/RUNBOOKS.md':          { required: false, category: 'implementation', description: 'Operational procedures (deploy, rollback, backup)' },
+      'docs-implementation/CURRENT-STATE.md':     { required: false, category: 'implementation', description: 'Deployment status, feature completion, tech debt' },
+      'docs-implementation/VENDOR-BUGS.md':       { required: false, category: 'implementation', description: 'Third-party bug tracker with workarounds' },
+      // Root files
+      'AGENTS.md':     { required: true,  category: 'agent',    description: 'AI agent behavior rules and project context' },
+      'CHANGELOG.md':  { required: true,  category: 'tracking', description: 'All notable changes per Keep a Changelog format' },
+      'DRIFT-LOG.md':  { required: true,  category: 'tracking', description: 'Documented deviations from canonical docs' },
+      'ROADMAP.md':    { required: false, category: 'tracking', description: 'Project phases, feature tracking, vision' },
     },
     sourcePatterns: {
       services: 'src/services/**/*.{ts,js,py,java}',
@@ -72,6 +94,7 @@ export function loadConfig(projectDir) {
       testSpec: true,
       security: false,
       environment: true,
+      freshness: true,
     },
   };
 
@@ -104,7 +127,7 @@ function deepMerge(target, source) {
 function printBanner() {
   console.log(`
 ${c.cyan}${c.bold}  ╔═══════════════════════════════════════════╗
-  ║         SpecGuard v0.1.0                  ║
+  ║         SpecGuard v0.2.0                  ║
   ║   Canonical-Driven Development (CDD)      ║
   ╚═══════════════════════════════════════════╝${c.reset}
 `);
@@ -197,7 +220,7 @@ function main() {
   }
 
   if (command === '--version' || command === '-v') {
-    console.log('specguard v0.1.0');
+    console.log('specguard v0.2.0');
     process.exit(0);
   }
 
