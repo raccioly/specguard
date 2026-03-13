@@ -17,7 +17,8 @@ import { c } from '../shared.mjs';
 import { runGuardInternal } from './guard.mjs';
 import { runScoreInternal } from './score.mjs';
 import { existsSync, readFileSync, mkdirSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
 
 // Map validator failures to the right fix --doc target
@@ -112,7 +113,7 @@ export function runDiagnose(projectDir, config, flags) {
     if (hasStructural || autoFixable.length > 0) {
       // Run init to create missing files
       try {
-        const cliPath = resolve(import.meta.dirname, '..', 'docguard.mjs');
+        const cliPath = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'docguard.mjs');
         execSync(`node "${cliPath}" init --dir "${projectDir}"`, {
           encoding: 'utf-8',
           stdio: 'pipe',
@@ -121,7 +122,7 @@ export function runDiagnose(projectDir, config, flags) {
 
       // Run generate to fill in content
       try {
-        const cliPath = resolve(import.meta.dirname, '..', 'docguard.mjs');
+        const cliPath = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'docguard.mjs');
         execSync(`node "${cliPath}" generate --dir "${projectDir}" --force`, {
           encoding: 'utf-8',
           stdio: 'pipe',

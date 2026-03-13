@@ -7,13 +7,15 @@ import { describe, it } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { execSync } from 'node:child_process';
 import { mkdtempSync, rmSync, existsSync, writeFileSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
+import { fileURLToPath } from 'node:url';
 
-const CLI = join(import.meta.dirname, '..', 'cli', 'docguard.mjs');
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const CLI = join(__dirname, '..', 'cli', 'docguard.mjs');
 const run = (args, cwd) => execSync(`node ${CLI} ${args}`, {
   encoding: 'utf-8',
-  cwd: cwd || join(import.meta.dirname, '..'),
+  cwd: cwd || join(__dirname, '..'),
   env: { ...process.env, NO_COLOR: '1' },
 });
 
@@ -365,7 +367,7 @@ describe('help completeness v0.5', () => {
   });
 
   it('shows current version from package.json', () => {
-    const pkg = JSON.parse(readFileSync(join(import.meta.dirname, '..', 'package.json'), 'utf-8'));
+    const pkg = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf-8'));
     const output = run('--version');
     assert.ok(output.includes(pkg.version), `Expected version ${pkg.version} in output: ${output}`);
   });
