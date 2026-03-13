@@ -16,8 +16,9 @@
 import { c } from '../docguard.mjs';
 import { runGuardInternal } from './guard.mjs';
 import { runScoreInternal } from './score.mjs';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { execSync } from 'node:child_process';
 
 // Map validator failures to the right fix --doc target
 const VALIDATOR_TO_DOC = {
@@ -39,90 +40,110 @@ const FIX_INSTRUCTIONS = {
     action: 'Create missing files',
     command: 'docguard init',
     description: 'Run init to create missing documentation templates.',
+    autoFixable: true,
   },
   'Doc Sections': {
     action: 'Fill document sections',
     command: 'docguard fix --doc',
     description: 'Documents exist but have missing or placeholder sections. Use fix --doc to generate AI content prompts.',
+    autoFixable: false,
   },
   'Docs-Sync': {
     action: 'Sync documentation references',
     command: 'docguard fix --doc architecture',
     description: 'Documentation references are out of sync with code. Review and update component maps.',
+    autoFixable: false,
   },
   'Drift': {
     action: 'Update DRIFT-LOG.md',
     description: 'Code deviates from canonical docs without logged reasons. Add DRIFT entries or update the canonical docs.',
+    autoFixable: false,
   },
   'Changelog': {
     action: 'Update CHANGELOG.md',
     description: 'CHANGELOG.md is missing or has no [Unreleased] section. Add recent changes.',
+    autoFixable: false,
   },
   'Test-Spec': {
     action: 'Update TEST-SPEC.md',
     command: 'docguard fix --doc test-spec',
     description: 'Test documentation needs updating to match actual test structure.',
+    autoFixable: false,
   },
   'Environment': {
     action: 'Update ENVIRONMENT.md',
     command: 'docguard fix --doc environment',
     description: 'Environment documentation is missing or incomplete.',
+    autoFixable: false,
   },
   'Security': {
     action: 'Update SECURITY.md',
     command: 'docguard fix --doc security',
     description: 'Security documentation needs updating.',
+    autoFixable: false,
   },
   'Architecture': {
     action: 'Update ARCHITECTURE.md',
     command: 'docguard fix --doc architecture',
     description: 'Architecture documentation doesn\'t match the codebase.',
+    autoFixable: false,
   },
   'Freshness': {
     action: 'Review stale documents',
     description: 'Documents haven\'t been reviewed since recent code changes. Re-run fix --doc for each stale doc.',
+    autoFixable: false,
   },
 };
 
 export function runDiagnose(projectDir, config, flags) {
   // ── Step 1: Run guard internally ──
-  const guardData = runGuardInternal(projectDir, config);
+  let guardData = runGuardInternal(projectDir, config);
   const scoreData = runScoreInternal(projectDir, config);
 
   // ── Step 2: Collect issues ──
-  const issues = [];
-  for (const v of guardData.validators) {
-    if (v.status === 'skipped' || v.status === 'pass') continue;
+  let issues = collectIssues(guardData);
 
-    const fixInfo = FIX_INSTRUCTIONS[v.name] || { action: `Review ${v.name}`, description: 'Manual review needed.' };
-    const docTarget = VALIDATOR_TO_DOC[v.name];
+  // ── Step 3: Auto-fix what we can (unless --no-fix) ──
+  const shouldAutoFix = !flags.noFix && flags.format !== 'json';
+  if (shouldAutoFix && issues.length > 0) {
+    const autoFixable = issues.filter(i => i.autoFixable);
+    const hasStructural = issues.some(i => i.validator === 'Structure');
 
-    for (const err of v.errors) {
-      issues.push({
-        severity: 'error',
-        validator: v.name,
-        message: err,
-        action: fixInfo.action,
-        command: fixInfo.command || null,
-        docTarget,
-      });
-    }
-    for (const warn of v.warnings) {
-      issues.push({
-        severity: 'warning',
-        validator: v.name,
-        message: warn,
-        action: fixInfo.action,
-        command: fixInfo.command || null,
-        docTarget,
-      });
+    if (hasStructural || autoFixable.length > 0) {
+      // Run init to create missing files
+      try {
+        const cliPath = resolve(import.meta.dirname, '..', 'docguard.mjs');
+        execSync(`node "${cliPath}" init --dir "${projectDir}"`, {
+          encoding: 'utf-8',
+          stdio: 'pipe',
+        });
+      } catch { /* init may partially succeed */ }
+
+      // Run generate to fill in content
+      try {
+        const cliPath = resolve(import.meta.dirname, '..', 'docguard.mjs');
+        execSync(`node "${cliPath}" generate --dir "${projectDir}" --force`, {
+          encoding: 'utf-8',
+          stdio: 'pipe',
+        });
+      } catch { /* generate may partially succeed */ }
+
+      // Re-run guard to see what's still broken
+      guardData = runGuardInternal(projectDir, config);
+      issues = collectIssues(guardData);
+
+      if (!flags.format || flags.format === 'text') {
+        const fixedCount = autoFixable.length - issues.filter(i => i.autoFixable).length;
+        if (fixedCount > 0) {
+          console.log(`  ${c.green}⚡ Auto-fixed ${fixedCount} issue(s)${c.reset} (created/regenerated docs)\n`);
+        }
+      }
     }
   }
 
   // Detect stale docs from freshness and map to specific fix --doc targets
   for (const issue of issues) {
     if (issue.validator === 'Freshness' && !issue.docTarget) {
-      // Try to extract doc name from warning message
       const match = issue.message.match(/([\w-]+\.md)/i);
       if (match) {
         const docName = match[1].toLowerCase().replace('.md', '');
@@ -135,7 +156,7 @@ export function runDiagnose(projectDir, config, flags) {
     }
   }
 
-  // ── Step 3: Output ──
+  // ── Step 4: Output ──
   if (flags.format === 'json') {
     outputJSON(guardData, scoreData, issues);
   } else if (flags.format === 'prompt') {
@@ -143,6 +164,43 @@ export function runDiagnose(projectDir, config, flags) {
   } else {
     outputText(projectDir, guardData, scoreData, issues);
   }
+}
+
+/**
+ * Collect issues from guard results with fix metadata.
+ */
+function collectIssues(guardData) {
+  const issues = [];
+  for (const v of guardData.validators) {
+    if (v.status === 'skipped' || v.status === 'pass') continue;
+
+    const fixInfo = FIX_INSTRUCTIONS[v.name] || { action: `Review ${v.name}`, description: 'Manual review needed.', autoFixable: false };
+    const docTarget = VALIDATOR_TO_DOC[v.name];
+
+    for (const err of v.errors) {
+      issues.push({
+        severity: 'error',
+        validator: v.name,
+        message: err,
+        action: fixInfo.action,
+        command: fixInfo.command || null,
+        docTarget,
+        autoFixable: fixInfo.autoFixable || false,
+      });
+    }
+    for (const warn of v.warnings) {
+      issues.push({
+        severity: 'warning',
+        validator: v.name,
+        message: warn,
+        action: fixInfo.action,
+        command: fixInfo.command || null,
+        docTarget,
+        autoFixable: fixInfo.autoFixable || false,
+      });
+    }
+  }
+  return issues;
 }
 
 function outputJSON(guardData, scoreData, issues) {

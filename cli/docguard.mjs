@@ -396,6 +396,8 @@ function main() {
     } else if (args[i] === '--platform' && args[i + 1]) {
       flags.platform = args[i + 1];
       i++;
+    } else if (args[i] === '--no-fix') {
+      flags.noFix = true;
     }
   }
 
