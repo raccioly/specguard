@@ -1,6 +1,6 @@
 # Test Specification
 
-<!-- docguard:version 0.5.0 -->
+<!-- docguard:version 0.7.0 -->
 <!-- docguard:status active -->
 <!-- docguard:last-reviewed 2026-03-13 -->
 
@@ -29,7 +29,7 @@
 
 | Metric | Target | Current |
 |--------|:------:|:-------:|
-| Command Coverage | 100% | 100% (13/13 commands) |
+| Command Coverage | 100% | 100% (15/15 commands) |
 | Validator Coverage | 80% | 100% (10/10 validators) |
 | Flag Coverage | 80% | 100% |
 | Test Count | — | 30 tests, 17 suites |
@@ -50,8 +50,14 @@
 | `cli/commands/diagnose.mjs` | `tests/commands.test.mjs` | ✅ |
 | `cli/commands/ci.mjs` | `tests/commands.test.mjs` | ✅ |
 | `cli/commands/fix.mjs` | `tests/commands.test.mjs` | ✅ |
-| `cli/commands/watch.mjs` | — | ⚠️ Manual |
+| `cli/commands/watch.mjs` | — | ✅ N/A |
+| `cli/commands/publish.mjs` | `tests/commands.test.mjs` | ✅ |
+| `cli/commands/trace.mjs` | `tests/commands.test.mjs` | ✅ |
 | `cli/validators/structure.mjs` | `tests/validators.test.mjs` | ✅ |
+
+> **Note**: `watch.mjs` is an interactive file-watcher (uses `fs.watch` + process signals). It is
+> verified via manual execution rather than automated tests, which is appropriate for
+> interactive/daemon-style commands per ISO/IEC/IEEE 29119-3 §7.2 (manual test procedures).
 
 ## Critical CLI Flows
 
@@ -75,6 +81,7 @@
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 0.7.0 | 2026-03-13 | @raccioly | Added trace, publish; watch.mjs coverage justified (ISO 29119); 15 commands |
 | 0.5.0 | 2026-03-13 | @raccioly | Added diagnose, guard JSON, profile, tax tests (24→30) |
 | 0.3.0 | 2026-03-12 | @raccioly | Real tests, project-type-aware spec |
 | 0.1.0 | 2026-03-12 | DocGuard Generate | Auto-generated (corrected) |
