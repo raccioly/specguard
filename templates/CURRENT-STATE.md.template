@@ -1,0 +1,64 @@
+# Current State
+
+<!-- specguard:version 0.1.0 -->
+<!-- specguard:status living -->
+<!-- specguard:last-reviewed YYYY-MM-DD -->
+
+> **Implementation document** — Current state. What is actually deployed and working right now.  
+> Updated continuously as implementation progresses.
+
+| Metadata | Value |
+|----------|-------|
+| **Status** | ![Status](https://img.shields.io/badge/status-living-blue) |
+| **Version** | `0.1.0` |
+| **Last Updated** | YYYY-MM-DD |
+
+---
+
+## Deployment Status
+
+| Environment | URL | Status | Last Deploy |
+|------------|-----|:---:|:---:|
+| Production | <!-- URL --> | <!-- 🟢 Up / 🔴 Down --> | YYYY-MM-DD |
+| Staging | <!-- URL --> | | |
+| Local Dev | `localhost:3000` | | |
+
+## Feature Completion
+
+<!-- Track what's built vs what's planned -->
+
+| Feature | Canonical Doc | Implementation | Status |
+|---------|:---:|:---:|:---:|
+| <!-- e.g. User Auth --> | ✅ Documented | ✅ Implemented | 🟢 Live |
+| <!-- e.g. Payments --> | ✅ Documented | ⚠️ Partial | 🟡 In Progress |
+| <!-- e.g. Webhooks --> | ✅ Documented | ❌ Not Started | 🔴 Planned |
+
+## Active Drift
+
+<!-- Summary of all active drift entries — see DRIFT-LOG.md for details -->
+
+| Area | Drift Count | Severity |
+|------|:---:|----------|
+| <!-- e.g. API routes --> | <!-- e.g. 2 --> | <!-- e.g. Low --> |
+
+## Technical Debt
+
+<!-- Known shortcuts, TODO items, and planned refactors -->
+
+| # | Description | File(s) | Priority | Ticket |
+|---|------------|---------|:---:|--------|
+| 1 | | | <!-- P1/P2/P3 --> | |
+
+## Dependencies Health
+
+| Dependency | Current | Latest | Status |
+|-----------|---------|--------|:---:|
+| <!-- e.g. Node.js --> | <!-- e.g. 20.11 --> | <!-- e.g. 22.x --> | <!-- 🟢/🟡/🔴 --> |
+
+---
+
+## Revision History
+
+| Date | Description |
+|------|------------|
+| YYYY-MM-DD | Initial state capture |

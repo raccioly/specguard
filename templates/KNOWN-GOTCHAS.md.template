@@ -1,0 +1,69 @@
+# Known Gotchas
+
+<!-- specguard:version 0.1.0 -->
+<!-- specguard:status living -->
+<!-- specguard:last-reviewed YYYY-MM-DD -->
+
+> **Implementation document** — Current state. Lessons learned during development and operations.  
+> This is a living document. Add entries as you discover them.
+
+| Metadata | Value |
+|----------|-------|
+| **Status** | ![Status](https://img.shields.io/badge/status-living-blue) |
+| **Version** | `0.1.0` |
+| **Last Updated** | YYYY-MM-DD |
+
+---
+
+## How to Use This Document
+
+Each gotcha follows this format:
+- **Heading** = The component or area
+- **Symptom**: What you observe
+- **Gotcha**: The non-obvious root cause
+- **Fix**: The verified solution
+- **Step/Date**: When this was discovered (for traceability)
+
+---
+
+## 1. <!-- Component/Area Name -->
+
+### <!-- Short Descriptive Title -->
+
+**Symptom**: <!-- What does the user/developer observe? -->
+
+**Gotcha**: <!-- The non-obvious root cause that trips people up -->
+
+**Fix**: <!-- The verified solution -->
+
+<!-- Optional: code example -->
+```
+<!-- code fix example -->
+```
+
+> Discovered: YYYY-MM-DD
+
+---
+
+## 2. <!-- Next Component/Area -->
+
+### <!-- Short Descriptive Title -->
+
+**Symptom**: <!-- What you observe -->
+
+**Gotcha**: <!-- Root cause -->
+
+**Fix**: <!-- Solution -->
+
+> Discovered: YYYY-MM-DD
+
+---
+
+## Quick Reference Table
+
+<!-- Summary of all gotchas for quick scanning -->
+
+| # | Area | Gotcha Summary | Severity |
+|---|------|---------------|----------|
+| 1 | | | <!-- 🔴 Critical / 🟡 Medium / 🟢 Low --> |
+| 2 | | | |

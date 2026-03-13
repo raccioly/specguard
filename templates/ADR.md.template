@@ -1,0 +1,64 @@
+# Architecture Decision Records (ADR)
+
+<!-- specguard:version 0.1.0 -->
+<!-- specguard:status living -->
+<!-- specguard:last-reviewed YYYY-MM-DD -->
+
+> **Canonical document** — Design intent. Records significant architectural decisions and their rationale.  
+> Once accepted, ADRs are immutable. Superseded ADRs are preserved with a link to their replacement.
+
+| Metadata | Value |
+|----------|-------|
+| **Status** | ![Status](https://img.shields.io/badge/status-living-blue) |
+| **Version** | `0.1.0` |
+| **Last Updated** | YYYY-MM-DD |
+
+---
+
+## Index
+
+| # | Title | Status | Date |
+|---|-------|:---:|:---:|
+| ADR-001 | <!-- e.g. Use PostgreSQL over MongoDB --> | ✅ Accepted | YYYY-MM-DD |
+| ADR-002 | | | |
+
+---
+
+## ADR-001: <!-- Title -->
+
+**Status**: ✅ Accepted  
+**Date**: YYYY-MM-DD  
+**Author**: @your-github-username
+
+### Context
+
+<!-- What is the issue that we're seeing that motivates this decision? -->
+
+### Decision
+
+<!-- What is the change that we're proposing and/or doing? -->
+
+### Consequences
+
+<!-- What becomes easier or more difficult to do because of this change? -->
+
+#### Positive
+- <!-- Benefit 1 -->
+
+#### Negative
+- <!-- Tradeoff 1 -->
+
+#### Risks
+- <!-- Risk 1 -->
+
+### Alternatives Considered
+
+| Alternative | Pros | Cons | Why Not |
+|------------|------|------|---------|
+| <!-- e.g. MongoDB --> | <!-- e.g. Flexible schema --> | <!-- e.g. Weak joins --> | <!-- e.g. We need relational queries --> |
+
+---
+
+## ADR-002: <!-- Title -->
+
+<!-- Same format as ADR-001 -->

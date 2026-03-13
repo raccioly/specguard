@@ -1,0 +1,74 @@
+# Vendor Bug Reports & Integration Issues
+
+<!-- specguard:version 0.1.0 -->
+<!-- specguard:status living -->
+<!-- specguard:last-reviewed YYYY-MM-DD -->
+
+> **Implementation document** — Current state. Tracks bugs filed with third-party vendors and workarounds.  
+> Essential for avoiding repeated investigation of known vendor issues.
+
+| Metadata | Value |
+|----------|-------|
+| **Status** | ![Status](https://img.shields.io/badge/status-living-blue) |
+| **Version** | `0.1.0` |
+| **Last Updated** | YYYY-MM-DD |
+
+---
+
+## Active Vendor Issues
+
+| # | Vendor | Issue | Filed Date | Ticket # | Status | Workaround |
+|---|--------|-------|:---:|----------|--------|------------|
+| 1 | <!-- e.g. AWS --> | <!-- Short description --> | YYYY-MM-DD | <!-- e.g. #12345 --> | <!-- 🟡 Open / 🟢 Fixed / 🔴 Won't Fix --> | <!-- Brief workaround --> |
+| 2 | | | | | | |
+
+---
+
+## Detailed Reports
+
+### V-001: <!-- Vendor — Short Title -->
+
+**Vendor**: <!-- e.g. AWS App Runner -->  
+**Filed**: YYYY-MM-DD  
+**Ticket**: <!-- e.g. AWS Support Case #12345 / GitHub Issue #789 -->  
+**Status**: 🟡 Open
+
+**Description**: 
+<!-- What the issue is -->
+
+**Steps to Reproduce**:
+1. <!-- Step 1 -->
+2. <!-- Step 2 -->
+
+**Expected Behavior**: 
+<!-- What should happen -->
+
+**Actual Behavior**: 
+<!-- What actually happens -->
+
+**Workaround**:
+<!-- How we work around this in our code -->
+
+```
+<!-- Code workaround if applicable -->
+```
+
+**Impact on Our System**: 
+<!-- How this affects our architecture/code -->
+
+**Resolution**: 
+<!-- Leave empty until resolved. When resolved, document the fix and version. -->
+
+---
+
+### V-002: <!-- Next Issue -->
+
+<!-- Same format as above -->
+
+---
+
+## Resolved Issues
+
+| # | Vendor | Issue | Filed | Resolved | Fix Version |
+|---|--------|-------|:---:|:---:|-----------|
+| | | | | | |

@@ -1,0 +1,66 @@
+# Deployment
+
+<!-- specguard:version 0.1.0 -->
+<!-- specguard:status draft | review | approved -->
+<!-- specguard:last-reviewed YYYY-MM-DD -->
+<!-- specguard:owner @your-github-username -->
+
+> **Canonical document** — Design intent. Describes how the system is deployed.  
+> For step-by-step procedures, see `docs-implementation/RUNBOOKS.md`.
+
+| Metadata | Value |
+|----------|-------|
+| **Status** | ![Status](https://img.shields.io/badge/status-draft-yellow) |
+| **Version** | `0.1.0` |
+| **Last Updated** | YYYY-MM-DD |
+| **Owner** | @your-github-username |
+
+---
+
+## Infrastructure Overview
+
+```mermaid
+graph LR
+    A[Developer] -->|git push| B[GitHub]
+    B -->|webhook| C[CI/CD]
+    C -->|deploy| D[Production]
+    D --> E[Database]
+    D --> F[Cache]
+```
+
+## Environments
+
+| Environment | Provider | URL | Branch | Auto-Deploy |
+|------------|---------|-----|--------|:-----------:|
+| Production | <!-- e.g. AWS App Runner --> | | `main` | ✅ |
+| Staging | | | `staging` | ✅ |
+| Local | Docker | `localhost:3000` | — | — |
+
+## CI/CD Pipeline
+
+| Stage | Tool | Trigger | Duration |
+|-------|------|---------|:--------:|
+| Lint | <!-- e.g. ESLint --> | Push | ~1 min |
+| Test | <!-- e.g. Vitest --> | Push | ~3 min |
+| Build | <!-- e.g. Docker --> | Push | ~5 min |
+| Deploy | <!-- e.g. App Runner --> | Merge to main | ~5 min |
+
+## DNS & Domains
+
+| Domain | Provider | Record Type | Points To |
+|--------|---------|:-----------:|-----------|
+| <!-- e.g. app.example.com --> | <!-- e.g. Cloudflare --> | CNAME | <!-- e.g. App Runner URL --> |
+
+## Monitoring
+
+| Service | What It Monitors | Alert Channel |
+|---------|-----------------|-------------|
+| <!-- e.g. CloudWatch --> | <!-- e.g. Error rates --> | <!-- e.g. Slack #alerts --> |
+
+---
+
+## Revision History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 0.1.0 | YYYY-MM-DD | | Initial draft |

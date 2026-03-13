@@ -1,7 +1,19 @@
 # Architecture
 
+<!-- specguard:version 0.1.0 -->
+<!-- specguard:status draft | review | approved -->
+<!-- specguard:last-reviewed YYYY-MM-DD -->
+<!-- specguard:owner @your-github-username -->
+
 > **Canonical document** — Design intent. This file describes WHAT the system is designed to be.  
-> Last updated: YYYY-MM-DD
+> ⚠️ Changes to this file require team review. Update `DRIFT-LOG.md` if code deviates.
+
+| Metadata | Value |
+|----------|-------|
+| **Status** | ![Status](https://img.shields.io/badge/status-draft-yellow) |
+| **Version** | `0.1.0` |
+| **Last Updated** | YYYY-MM-DD |
+| **Owner** | @your-github-username |
 
 ---
 
@@ -13,11 +25,10 @@
 
 <!-- Major modules/packages and their responsibilities -->
 
-| Component | Responsibility | Location |
-|-----------|---------------|----------|
-| <!-- e.g. API Server --> | <!-- e.g. Handles HTTP requests --> | <!-- e.g. src/server/ --> |
-| | | |
-| | | |
+| Component | Responsibility | Location | Tests |
+|-----------|---------------|----------|-------|
+| <!-- e.g. API Server --> | <!-- e.g. Handles HTTP requests --> | <!-- e.g. src/server/ --> | <!-- e.g. tests/server/ --> |
+| | | | |
 
 ## Layer Boundaries
 
@@ -30,13 +41,22 @@
 
 ## Tech Stack
 
-| Category | Technology | Version |
-|----------|-----------|---------|
-| Language | | |
-| Framework | | |
-| Database | | |
-| Auth | | |
-| Hosting | | |
+| Category | Technology | Version | License |
+|----------|-----------|---------|---------|
+| Language | | | |
+| Framework | | | |
+| Database | | | |
+| Auth | | | |
+| Hosting | | | |
+| CI/CD | | | |
+
+## External Dependencies
+
+<!-- Third-party services, APIs, and integrations -->
+
+| Service | Purpose | SLA | Fallback |
+|---------|---------|-----|----------|
+| <!-- e.g. Stripe --> | <!-- e.g. Payments --> | <!-- e.g. 99.99% --> | <!-- e.g. Queue + retry --> |
 
 ## Diagrams
 
@@ -48,3 +68,11 @@ graph TD
     B --> C[Service Layer]
     C --> D[Database]
 ```
+
+---
+
+## Revision History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 0.1.0 | YYYY-MM-DD | | Initial draft |

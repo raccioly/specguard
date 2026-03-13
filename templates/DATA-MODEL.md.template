@@ -1,7 +1,19 @@
 # Data Model
 
+<!-- specguard:version 0.1.0 -->
+<!-- specguard:status draft | review | approved -->
+<!-- specguard:last-reviewed YYYY-MM-DD -->
+<!-- specguard:owner @your-github-username -->
+
 > **Canonical document** — Design intent. This file describes the data structures and their relationships.  
-> Last updated: YYYY-MM-DD
+> ⚠️ Schema changes require this doc to be updated FIRST.
+
+| Metadata | Value |
+|----------|-------|
+| **Status** | ![Status](https://img.shields.io/badge/status-draft-yellow) |
+| **Version** | `0.1.0` |
+| **Last Updated** | YYYY-MM-DD |
+| **Owner** | @your-github-username |
 
 ---
 
@@ -12,7 +24,6 @@
 | Entity | Storage | Primary Key | Description |
 |--------|---------|-------------|-------------|
 | <!-- e.g. User --> | <!-- e.g. users table --> | <!-- e.g. userId (UUID) --> | <!-- e.g. Registered users --> |
-| | | | |
 
 ## Schema Definitions
 
@@ -20,20 +31,36 @@
 
 ### <!-- EntityName -->
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| | | | |
+| Field | Type | Required | Default | Constraints | Description |
+|-------|------|----------|---------|-------------|-------------|
+| | | | | | |
 
 ## Relationships
 
-| From | To | Type | Description |
-|------|-----|------|-------------|
-| | | <!-- 1:1, 1:many, many:many --> | |
+| From | To | Type | FK/Reference | Cascade |
+|------|-----|------|-------------|---------|
+| | | <!-- 1:1, 1:many, many:many --> | | <!-- ON DELETE behavior --> |
 
 ## Indexes
 
 <!-- Indexes for query performance — document which index each query uses -->
 
-| Table | Index Name | Fields | Purpose |
-|-------|-----------|--------|---------|
-| | | | |
+| Table | Index Name | Fields | Type | Purpose |
+|-------|-----------|--------|------|---------|
+| | | | <!-- B-tree, GSI, LSI --> | |
+
+## Migration Strategy
+
+<!-- How schema changes are applied -->
+
+| Strategy | Tool | Notes |
+|----------|------|-------|
+| <!-- e.g. Migrations --> | <!-- e.g. Drizzle, Prisma, Alembic --> | |
+
+---
+
+## Revision History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 0.1.0 | YYYY-MM-DD | | Initial draft |

@@ -1,0 +1,115 @@
+# Operational Runbooks
+
+<!-- specguard:version 0.1.0 -->
+<!-- specguard:status living -->
+<!-- specguard:last-reviewed YYYY-MM-DD -->
+
+> **Implementation document** — Current state. Step-by-step procedures for operations.  
+> Each runbook is a self-contained procedure that can be executed independently.
+
+| Metadata | Value |
+|----------|-------|
+| **Status** | ![Status](https://img.shields.io/badge/status-living-blue) |
+| **Version** | `0.1.0` |
+| **Last Updated** | YYYY-MM-DD |
+
+---
+
+## Table of Contents
+
+- [1. Deployment](#1-deployment)
+- [2. Emergency Rollback](#2-emergency-rollback)
+- [3. Health Monitoring](#3-health-monitoring)
+- [4. Data Backup & Restore](#4-data-backup--restore)
+- [5. Incident Response](#5-incident-response)
+
+---
+
+## 1. Deployment
+
+### Steps
+
+1. <!-- e.g. Push to GitHub → triggers build -->
+2. <!-- e.g. New container builds -->
+3. <!-- e.g. Health check passes -->
+4. <!-- Verification step -->
+
+### Verification
+
+```bash
+# Verify deployment succeeded
+```
+
+---
+
+## 2. Emergency Rollback
+
+### When to Use
+
+<!-- Under what conditions should a rollback be triggered? -->
+
+### Steps
+
+```bash
+# Rollback command
+```
+
+### Constraints
+
+- <!-- e.g. Database migrations must be backward-compatible -->
+
+---
+
+## 3. Health Monitoring
+
+### Endpoints
+
+| Endpoint | Auth Required | Purpose |
+|----------|:---:|---------|
+| <!-- e.g. GET /health --> | No | Liveness check |
+| <!-- e.g. GET /health/detailed --> | Yes | Component-level status |
+
+### Response Interpretation
+
+| Status | Action |
+|--------|--------|
+| `healthy` | All systems operational |
+| `degraded` | Non-critical issue, investigate |
+| `unhealthy` | Critical failure, escalate immediately |
+
+---
+
+## 4. Data Backup & Restore
+
+### Create Backup
+
+```bash
+# Backup command
+```
+
+### Restore from Backup
+
+```bash
+# Restore command
+```
+
+> ⚠️ Always verify backup integrity before restoring.
+
+---
+
+## 5. Incident Response
+
+### Severity Levels
+
+| Level | Definition | Response Time | Escalation |
+|-------|-----------|:---:|------------|
+| **P0** | System down | Immediate | Page on-call |
+| **P1** | Major feature broken | 15 min | Notify team lead |
+| **P2** | Minor issue | 1 hour | Create ticket |
+| **P3** | Cosmetic/low impact | Next sprint | Backlog |
+
+### Common Outage Scenarios
+
+| Scenario | Impact | Mitigation |
+|----------|--------|------------|
+| <!-- e.g. Database down --> | <!-- e.g. All writes fail --> | <!-- e.g. Switch to read-only mode --> |

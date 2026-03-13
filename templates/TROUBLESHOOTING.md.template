@@ -1,0 +1,96 @@
+# Troubleshooting Guide
+
+<!-- specguard:version 0.1.0 -->
+<!-- specguard:status living -->
+<!-- specguard:last-reviewed YYYY-MM-DD -->
+
+> **Implementation document** — Current state. Solutions for common issues.  
+> Organized by category. Each entry includes symptoms, diagnosis, and fix.
+
+| Metadata | Value |
+|----------|-------|
+| **Status** | ![Status](https://img.shields.io/badge/status-living-blue) |
+| **Version** | `0.1.0` |
+| **Last Updated** | YYYY-MM-DD |
+
+---
+
+## 1. Setup & Local Environment
+
+### <!-- Issue Title -->
+
+**Error**: `<!-- exact error message -->`
+
+**Cause**: <!-- Root cause explanation -->
+
+**Solution**:
+```bash
+# Fix command
+```
+
+---
+
+## 2. Database & Persistence
+
+### <!-- Issue Title -->
+
+**Symptom**: <!-- What you observe -->
+
+**Cause**: <!-- Why this happens -->
+
+**Remediation**:
+1. <!-- Step 1 -->
+2. <!-- Step 2 -->
+
+---
+
+## 3. Authentication & Authorization
+
+### <!-- Issue Title -->
+
+**Error**: `<!-- exact error message -->`
+
+**Diagnostic**:
+1. <!-- How to diagnose -->
+
+**Fix**: <!-- Solution -->
+
+---
+
+## 4. Deployment & Infrastructure
+
+### <!-- Issue Title -->
+
+**Symptom**: <!-- What you observe -->
+
+| Symptom | Probable Cause | Resolution |
+|---------|---------------|------------|
+| <!-- e.g. 502 after deploy --> | <!-- e.g. Health check failing --> | <!-- e.g. Check /health endpoint --> |
+
+---
+
+## 5. Build & Dependencies
+
+### <!-- Issue Title -->
+
+**Error**: `<!-- exact error message -->`
+
+**Fix**: <!-- Solution -->
+
+---
+
+## 6. Third-Party Services
+
+### <!-- Service Name -->
+
+**Issue**: <!-- What goes wrong -->
+
+**Workaround**: <!-- How to fix or work around -->
+
+---
+
+## Quick Diagnosis Table
+
+| Symptom | Category | Solution |
+|---------|----------|----------|
+| | | |
