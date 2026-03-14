@@ -4,7 +4,7 @@
 <!-- docguard:status active -->
 <!-- docguard:last-reviewed 2026-03-13 -->
 
-> DocGuard is a zero-dependency CLI tool. No E2E tests needed.
+> DocGuard is a zero-dependency CLI tool. CLI integration tests cover the full stack.
 
 | Metadata | Value |
 |----------|-------|
@@ -30,8 +30,8 @@ Test names follow the pattern: "verb + expected behavior" (e.g., "runs and shows
 | Unit | node:test | tests/ | `npm test` |
 | CLI Integration | node:test | tests/ | `npm test` |
 
-> **No E2E tests needed** — this is a CLI tool with no UI. CLI integration tests
-> validate commands end-to-end via Node.js subprocess execution.
+> **CLI integration tests cover the full stack** — this is a CLI tool with zero UI surface.
+> Commands are validated end-to-end via Node.js subprocess execution, making separate E2E tests redundant.
 
 ## Coverage Rules
 

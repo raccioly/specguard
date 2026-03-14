@@ -145,7 +145,7 @@ This installs DocGuard's slash commands (`/docguard.guard`, `/docguard.review`, 
 
 ---
 
-## 🔧 Commands
+## Usage
 
 DocGuard ships **13 commands**:
 

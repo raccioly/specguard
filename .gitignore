@@ -29,3 +29,8 @@ coverage/
 # Note: In real projects, docs-canonical/ SHOULD be committed.
 # These are excluded here because they're template-generated test files.
 docguard_cli/__pycache__/
+.venv/
+dist/
+*.egg-info/
+__pycache__/
+.venv

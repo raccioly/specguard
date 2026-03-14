@@ -36,7 +36,8 @@ export function validateMetricsConsistency(projectDir, config, guardResults) {
       if (r.status === 'skipped') return sum;
       return sum + (r.total || 0);
     }, 0);
-    const validatorCount = guardResults.filter(r => r.status !== 'skipped').length;
+    // +1 because Metrics-Consistency itself hasn't been added to results yet
+    const validatorCount = guardResults.filter(r => r.status !== 'skipped').length + 1;
 
     actuals.checks = totalChecks;
     actuals.validators = validatorCount;

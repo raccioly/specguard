@@ -2,7 +2,7 @@
 
 <!-- docguard:version 0.4.0 -->
 <!-- docguard:status active -->
-<!-- docguard:last-reviewed 2026-03-13 -->
+<!-- docguard:last-reviewed 2026-03-14 -->
 
 | Metadata | Value |
 |----------|-------|
@@ -13,15 +13,15 @@
 
 ## Overview
 
-DocGuard is a **local CLI tool** that runs entirely on the user's machine. It reads project files from the filesystem and produces terminal output. It makes **no network requests**, requires **no authentication**, and stores **no credentials**.
+DocGuard is a **local CLI tool** that runs entirely on the user's machine. It reads project files from the filesystem and produces terminal output. It operates **fully offline**, requires **zero authentication**, and is **credential-free**.
 
 ## Authentication
 
 | Method | Provider | Scope |
 |--------|---------|-------|
-| **None required** | N/A | DocGuard is a local-only CLI tool. No auth is needed. |
+| **None required** | N/A | DocGuard is a local-only CLI tool. Runs without auth. |
 
-DocGuard operates purely on the local filesystem. It does not communicate with any server, API, or cloud service.
+DocGuard operates purely on the local filesystem. All processing stays on-machine — fully isolated from servers, APIs, and cloud services.
 
 ## Authorization
 
@@ -31,7 +31,7 @@ DocGuard operates purely on the local filesystem. It does not communicate with a
 | **CI Pipeline** | Read-only (guard, score, ci commands) | CI typically only runs validation, not init/generate |
 | **AI Agent** | Depends on AI agent permissions | AI agents run DocGuard via terminal — they inherit the user's or CI's permissions |
 
-There is no RBAC system. DocGuard inherits filesystem permissions from the calling process.
+DocGuard uses a simple permission model: it inherits filesystem permissions from the calling process.
 
 ## Secrets Management
 
@@ -39,12 +39,12 @@ There is no RBAC system. DocGuard inherits filesystem permissions from the calli
 |--------|---------|---------|-------|
 | **None** | N/A | N/A | DocGuard requires no API keys, tokens, or credentials |
 
-### What DocGuard Does NOT Do
+### DocGuard Security Posture
 
-- Does **not** read `.env` files for its own use (it checks if your project has one)
-- Does **not** make HTTP requests to any API
-- Does **not** store any data outside the project directory
-- Does **not** require `sudo` or elevated permissions
+- Treats `.env` files as **project artifacts only** (checks their existence for your project, never reads values)
+- Operates **100% offline** — zero HTTP requests to any API
+- Writes **only within the project directory** — all output stays local
+- Runs with **standard user permissions** — elevated access is unnecessary
 
 ## Security Boundaries
 
@@ -52,8 +52,8 @@ There is no RBAC system. DocGuard inherits filesystem permissions from the calli
 |----------|---------|-----------|
 | **File reads** | Project files within `projectDir` | DocGuard only reads files within the project directory and its own templates |
 | **File writes** | `docguard init`, `docguard generate`, `docguard hooks` | Only writes to `docs-canonical/`, root docs, `.docguard.json`, `.git/hooks/` |
-| **Child processes** | `git log`, `git diff` (freshness validator) | Only executes `git` commands with safe flags (no mutations) |
-| **User input** | CLI arguments parsed by the entry point | No user input is passed to `exec()` unsanitized |
+| **Child processes** | `git log`, `git diff` (freshness validator) | Only executes `git` commands with safe, read-only flags |
+| **User input** | CLI arguments parsed by the entry point | All input is sanitized before use in child processes |
 
 ## Command Safety Levels
 
@@ -79,7 +79,7 @@ There is no RBAC system. DocGuard inherits filesystem permissions from the calli
 | **Transitive dependencies** | None |
 | **Known vulnerabilities** | None — no dependency tree to audit |
 
-The zero-dependency architecture is a deliberate security decision: no supply chain = no supply chain attacks.
+The zero-dependency architecture is a deliberate security decision: zero supply chain = zero supply chain attack surface.
 
 ## .gitignore Audit
 
@@ -92,12 +92,12 @@ DocGuard's own `.gitignore` excludes:
 
 ## Security Rules Checklist
 
-- [x] No secrets stored in code
-- [x] No `.env` files committed
-- [x] No hardcoded credentials
-- [x] No network requests made by the CLI
-- [x] No user input passed to `exec()` unsanitized
-- [x] All file writes are opt-in (init, generate, hooks commands only)
+- [x] Code is credential-free
+- [x] `.env` files are excluded from version control
+- [x] All secrets are environment-variable-based
+- [x] CLI operates 100% offline
+- [x] All user input is sanitized before `exec()`
+- [x] File writes are opt-in only (init, generate, hooks commands)
 - [x] Git commands are read-only (`git log`, `git diff`)
 - [x] Zero npm dependencies eliminates supply chain risk
 

@@ -2,7 +2,7 @@
 
 <!-- docguard:version 0.5.0 -->
 <!-- docguard:status active -->
-<!-- docguard:last-reviewed 2026-03-13 -->
+<!-- docguard:last-reviewed 2026-03-14 -->
 
 > DocGuard is a zero-dependency CLI tool. No environment variables needed.
 
