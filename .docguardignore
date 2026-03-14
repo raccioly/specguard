@@ -7,3 +7,18 @@ Research/**
 
 # VS Code extension build artifacts
 vscode-extension/out/
+
+# Python distribution artifacts
+dist/
+build/
+*.egg-info/
+docguard_cli/
+__pycache__/
+*.pyc
+
+# OS files
+.DS_Store
+
+# Backups created by generate --force
+*.bak
+

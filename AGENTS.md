@@ -1,7 +1,8 @@
-# AI Agent Instructions — docguard
+# AI Agent Instructions — DocGuard
 
 > This project follows **Canonical-Driven Development (CDD)**.
 > Documentation is the source of truth. Read before coding.
+> DocGuard is an official [GitHub Spec Kit](https://github.com/github/spec-kit) community extension.
 
 ## Workflow
 
@@ -19,7 +20,8 @@
 - **Runtime**: Node.js 18+
 - **Dependencies**: Zero (pure Node.js built-ins)
 - **Testing**: `node:test` (built-in)
-- **Version**: 0.5.0
+- **Distribution**: npm + PyPI
+- **Version**: 0.9.5
 
 ## Key Files
 
@@ -30,6 +32,7 @@
 | `docs-canonical/SECURITY.md` | Auth & secrets |
 | `docs-canonical/TEST-SPEC.md` | Test requirements |
 | `docs-canonical/ENVIRONMENT.md` | Environment setup |
+| `docs-canonical/REQUIREMENTS.md` | Spec-kit aligned requirements |
 | `CHANGELOG.md` | Change tracking |
 | `DRIFT-LOG.md` | Documented deviations |
 
@@ -38,12 +41,18 @@
 | Command | Purpose |
 |---------|---------|
 | `diagnose` | **Primary** — identify issues + generate AI fix prompts |
-| `guard` | Validate project (CI gate) |
+| `guard` | Validate project (CI gate) — 19 validators |
+| `generate` | Reverse-engineer docs from code |
 | `fix --doc <name>` | AI prompt for specific document |
 | `score` | CDD maturity score (0-100) |
 | `init` | Initialize CDD docs |
-| `generate` | Reverse-engineer docs from code |
+| `diff` | Compare canonical docs vs code |
+| `agents` | Generate agent-specific configs |
+| `trace` | Requirements traceability matrix |
 | `ci` | CI/CD pipeline check |
+| `watch` | Live watch mode |
+| `hooks` | Install git hooks |
+| `llms` | Generate llms.txt |
 
 ## Rules
 
@@ -52,3 +61,4 @@
 - Security rules in SECURITY.md are mandatory
 - Test requirements in TEST-SPEC.md must be met
 - Run `docguard guard` before pushing — all checks must pass
+- All file writes use `safeWrite()` — backups before overwrite

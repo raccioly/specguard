@@ -20,16 +20,32 @@ cd your-project
 npx docguard-cli init
 ```
 
-Creates all 5 canonical docs + tracking files + AI slash commands.
+Creates all 6 canonical docs (including REQUIREMENTS.md) + tracking files + AI slash commands.
 
-### Option C: From existing code (best for established projects)
+### Option C: Spec-Driven Development (spec-kit projects)
+
+If you're using [GitHub Spec Kit](https://github.com/github/spec-kit):
+
+```bash
+# 1. Initialize spec-kit
+specify init . --ai claude
+
+# 2. Add DocGuard as enforcement layer
+specify extension add docguard
+
+# 3. Write specs with AI, validate with DocGuard
+/speckit.specify Build an app that...
+npx docguard-cli guard
+```
+
+### Option D: From existing code (established projects)
 
 ```bash
 cd your-project
 npx docguard-cli generate
 ```
 
-Scans your codebase and generates pre-filled documentation.
+Scans your codebase and generates pre-filled documentation, including REQUIREMENTS.md with spec-kit-aligned FR/SC IDs.
 
 ## Fill the Docs (AI Does It)
 
@@ -52,9 +68,8 @@ diagnose  →  AI reads prompts  →  AI fixes docs  →  guard verifies
 ## Verify
 
 ```bash
-npx docguard-cli guard        # Pass/fail check
+npx docguard-cli guard        # Pass/fail check (19 validators)
 npx docguard-cli score        # 0-100 maturity score
-npx docguard-cli score --tax  # How much time docs cost you
 ```
 
 ## Automate
@@ -66,7 +81,7 @@ npx docguard-cli hooks
 # CI/CD pipelines
 npx docguard-cli ci --threshold 70
 
-# Live watch mode with auto-fix
+# Live watch mode
 npx docguard-cli watch --auto-fix
 ```
 

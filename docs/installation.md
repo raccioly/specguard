@@ -2,25 +2,30 @@
 
 ## Requirements
 
-- **Node.js** ≥ 18
+- **Node.js** ≥ 18 (required for both npm and Python installations)
 - **git** (optional — needed for freshness validation)
 
-## Install via npx (Recommended)
+## Install via npm
 
-No installation needed. Run directly:
+### Option 1: Run directly (no install)
 
 ```bash
-npx docguard --help
+npx docguard-cli diagnose
 ```
 
 This downloads and runs DocGuard on demand. Always uses the latest version.
 
-## Install as Dev Dependency
-
-For projects that want a pinned version:
+### Option 2: Install globally
 
 ```bash
-npm install --save-dev docguard
+npm i -g docguard-cli
+docguard diagnose
+```
+
+### Option 3: Dev dependency (pinned version)
+
+```bash
+npm install --save-dev docguard-cli
 ```
 
 Then use via npm scripts in `package.json`:
@@ -35,26 +40,36 @@ Then use via npm scripts in `package.json`:
 }
 ```
 
-## Install Globally
+## Install via Python (PyPI)
 
 ```bash
-npm install -g docguard
+pip install docguard-cli
+docguard diagnose
 ```
 
-Then use anywhere:
+> **Note:** The Python package is a thin wrapper that delegates to `npx docguard-cli`. Node.js 18+ must be installed on the system.
+
+The Python wrapper:
+- Detects Node.js 18+ on your system
+- Runs `npx docguard-cli` with all arguments forwarded
+- Provides clear error messages if Node.js is missing
+
+## Install as Spec Kit Extension
+
+If your project uses [GitHub Spec Kit](https://github.com/github/spec-kit):
 
 ```bash
-docguard guard
-docguard score
+specify extension add docguard
 ```
+
+This installs DocGuard's slash commands into your AI agent's command palette.
 
 ## Verify Installation
 
 ```bash
-npx docguard --version
+npx docguard-cli --version
+# Output: docguard v0.9.5
 ```
-
-Should output `DocGuard v0.4.0` (or current version).
 
 ## CI/CD Installation
 
@@ -62,7 +77,7 @@ In GitHub Actions or similar:
 
 ```yaml
 - name: Run DocGuard
-  run: npx docguard ci --threshold 70
+  run: npx docguard-cli guard
 ```
 
 No separate install step needed — `npx` handles it.
@@ -71,11 +86,14 @@ No separate install step needed — `npx` handles it.
 
 ```bash
 # If installed as dev dependency
-npm update docguard
+npm update docguard-cli
 
 # If installed globally
-npm update -g docguard
+npm update -g docguard-cli
+
+# If installed via Python
+pip install --upgrade docguard-cli
 
 # If using npx — always runs latest automatically
-npx docguard@latest --version
+npx docguard-cli@latest --version
 ```

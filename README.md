@@ -1,58 +1,57 @@
-# DocGuard
+# 🛡️ DocGuard
 
-> **AI-native documentation enforcement for Canonical-Driven Development (CDD).**  
-> AI diagnoses. AI fixes. AI verifies. Humans review.
+> **The enforcement layer for Spec-Driven Development.**
+> Validate. Score. Enforce. Ship documentation that AI agents can actually use.
 
 [![npm](https://img.shields.io/npm/v/docguard-cli)](https://www.npmjs.com/package/docguard-cli)
+[![PyPI](https://img.shields.io/pypi/v/docguard-cli)](https://pypi.org/project/docguard-cli/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-green)](https://nodejs.org)
 [![Zero Dependencies](https://img.shields.io/badge/Dependencies-0-brightgreen)](package.json)
-[![GitHub Marketplace](https://img.shields.io/badge/Marketplace-DocGuard-blue?logo=github)](https://github.com/marketplace/actions/docguard-cdd-compliance)
+[![Spec Kit Extension](https://img.shields.io/badge/Spec_Kit-Extension-blueviolet)](https://github.com/github/spec-kit)
 
 ---
 
-## What is CDD?
+## Table of Contents
 
-**Canonical-Driven Development** is a methodology where canonical documentation drives every phase of a project — from initial design through ongoing maintenance. Unlike traditional development where docs are written after code (and quickly rot), CDD treats documentation as the authoritative source that code must conform to.
+- [What is DocGuard?](#what-is-docguard)
+- [Quick Start](#-quick-start)
+- [Spec Kit Integration](#-spec-kit-integration)
+- [Commands](#-commands)
+- [Validators](#-validators)
+- [Templates](#-templates)
+- [AI Agent Support](#-ai-agent-support)
+- [Slash Commands](#-slash-commands)
+- [CI/CD Integration](#%EF%B8%8F-cicd-integration)
+- [File Structure](#-file-structure)
+- [Configuration](#%EF%B8%8F-configuration)
+- [Research Credits](#-research-credits)
 
-| Traditional | CDD |
-|-------------|-----|
+---
+
+## What is DocGuard?
+
+DocGuard enforces **Canonical-Driven Development (CDD)** — a methodology where documentation is the source of truth, not an afterthought. AI writes the docs, DocGuard validates them.
+
+| Traditional Development | Canonical-Driven Development |
+|:----|:----|
 | Code first, docs maybe | Docs first, code conforms |
-| Docs rot silently | Drift is tracked explicitly |
+| Docs rot silently | Drift is tracked and enforced |
 | Docs are optional | Docs are required and validated |
-| One agent, one context | Any agent, shared context |
+| One AI agent, one context | Any agent, shared context via canonical docs |
 
-**DocGuard** is the CLI tool that enforces CDD — auditing, generating, and guarding your project documentation.
+DocGuard is an official [GitHub Spec Kit](https://github.com/github/spec-kit) community extension. It validates the artifacts that Spec Kit creates, ensuring your specs stay high-quality throughout the development lifecycle.
 
-📖 **[Read the full philosophy](PHILOSOPHY.md)** | 📋 **[Read the standard](STANDARD.md)** | ⚖️ **[See comparisons](COMPARISONS.md)** | 🗺️ **[Roadmap](ROADMAP.md)**
+📖 **[Philosophy](PHILOSOPHY.md)** · 📋 **[CDD Standard](STANDARD.md)** · ⚖️ **[Comparisons](COMPARISONS.md)** · 🗺️ **[Roadmap](ROADMAP.md)**
 
 ---
 
-## Quick Start
+## ⚡ Quick Start
+
+### Node.js (npm)
 
 ```bash
-# The primary command — AI diagnoses AND fixes everything
-npx docguard-cli diagnose
-
-# Generate CDD docs from an existing codebase
-npx docguard-cli generate
-
-# Start from scratch (minimal setup for side projects)
-npx docguard-cli init --profile starter
-
-# Start from scratch (full enterprise setup)
-npx docguard-cli init
-
-# CI gate — pass/fail for pipelines
-npx docguard-cli guard
-```
-
-No installation needed. Zero dependencies. Works with Node.js 18+.
-
-### Install
-
-```bash
-# Run directly (no install)
+# No install needed — run directly
 npx docguard-cli diagnose
 
 # Or install globally
@@ -60,13 +59,32 @@ npm i -g docguard-cli
 docguard diagnose
 ```
 
-### GitHub Action
+### Python (PyPI)
 
-```yaml
-- uses: raccioly/docguard@v0.5.0
-  with:
-    command: guard
-    fail-on-warning: true
+```bash
+pip install docguard-cli
+docguard diagnose
+```
+
+> **Note:** The Python package is a thin wrapper that delegates to `npx`. Node.js 18+ is required on the system.
+
+### Core Workflow
+
+```bash
+# 1. Initialize docs for your project
+npx docguard-cli init
+
+# 2. Or reverse-engineer docs from existing code
+npx docguard-cli generate
+
+# 3. AI diagnoses issues and generates fix prompts
+npx docguard-cli diagnose
+
+# 4. Validate — use as CI gate
+npx docguard-cli guard
+
+# 5. Check maturity score
+npx docguard-cli score
 ```
 
 ### The AI Loop
@@ -77,34 +95,89 @@ diagnose  →  AI reads prompts  →  AI fixes docs  →  guard verifies
    └───────────────── issues found? ←──────────────────────┘
 ```
 
-`diagnose` is the primary command. It runs all validators, maps every failure to an AI-actionable fix prompt, and outputs a remediation plan. Your AI agent runs it, fixes the docs, and runs `guard` to verify. Zero human intervention.
+`diagnose` is the primary command. It runs all validators, maps every failure to an AI-actionable fix prompt, and outputs a remediation plan. Your AI agent runs it, fixes the docs, and runs `guard` to verify. Zero human intervention required.
 
 ---
 
-## Usage
+## 🌱 Spec Kit Integration
 
-```bash
-# Initialize CDD docs for your project
-npx docguard-cli init
+DocGuard is a [community extension](https://github.com/github/spec-kit/blob/main/extensions/README.md) for GitHub's **Spec Kit** framework. While Spec Kit focuses on **creating** specifications (via AI slash commands like `/speckit.specify` and `/speckit.plan`), DocGuard focuses on **validating** their quality.
 
-# Reverse-engineer docs from existing code
-npx docguard-cli generate
+### How They Work Together
 
-# Validate project — use as CI gate
-npx docguard-cli guard
-
-# Get AI-actionable fix prompts
-npx docguard-cli diagnose
-
-# Check CDD maturity score
-npx docguard-cli score
+```
+┌─────────────────┐          ┌──────────────────┐
+│    Spec Kit      │          │    DocGuard       │
+│                  │          │                   │
+│  /speckit.specify│ ──────→  │  docguard guard   │
+│  Creates specs   │          │  Validates specs  │
+│  (AI-driven)     │          │  (automated)      │
+└─────────────────┘          └──────────────────┘
 ```
 
+| Phase | Tool | What happens |
+|:------|:-----|:-------------|
+| 1. Initialize | `specify init` | Creates `.specify/` directory and templates |
+| 2. Write specs | `/speckit.specify` | AI creates `spec.md` with FR-IDs, user stories |
+| 3. **Validate** | **`docguard guard`** | Checks spec quality (mandatory sections, FR/SC IDs) |
+| 4. Plan | `/speckit.plan` | AI creates `plan.md` with technical context |
+| 5. **Validate** | **`docguard guard`** | Checks plan quality (sections, structure) |
+| 6. Tasks | `/speckit.tasks` | AI creates `tasks.md` with phased breakdown |
+| 7. **Validate** | **`docguard guard`** | Checks task quality (phases, T-IDs) |
+| 8. Implement | `/speckit.implement` | AI writes code |
+| 9. **Enforce** | **`docguard guard`** | Final quality gate — CI/CD |
+
+### What DocGuard Validates in Spec Kit Projects
+
+- **spec.md** — Mandatory sections (User Scenarios, Requirements, Success Criteria), FR-xxx IDs, SC-xxx IDs
+- **plan.md** — Summary, Technical Context, Project Structure sections
+- **tasks.md** — Phased task breakdown (Phase 1, 2, 3+), T-xxx task IDs
+- **constitution.md** — Detected at `.specify/memory/constitution.md` or project root
+- **Requirement traceability** — FR, SC, NFR, US, AC, UC, SYS, ARCH, MOD, T IDs
+
+### Installing as a Spec Kit Extension
+
+```bash
+specify extension add docguard
+```
+
+This installs DocGuard's slash commands (`/docguard.guard`, `/docguard.review`, `/docguard.fix`, `/docguard.score`) into your AI agent's command palette.
+
 ---
 
-## 13 Commands
+## 🔧 Commands
 
-### 🔮 Generate — Reverse-engineer docs from code
+DocGuard ships **13 commands**:
+
+| Command | Purpose |
+|:--------|:--------|
+| `diagnose` | **Primary** — identify every issue + generate AI fix prompts |
+| `guard` | Validate project against canonical docs (CI gate) |
+| `generate` | Reverse-engineer docs from existing codebase |
+| `init` | Initialize CDD docs from templates (interactive) |
+| `score` | CDD maturity score (0–100) with weighted breakdown |
+| `fix --doc <name>` | Generate AI prompt for a specific document |
+| `diff` | Compare canonical docs vs actual code artifacts |
+| `agents` | Generate agent-specific config files |
+| `trace` | Requirements traceability matrix |
+| `ci` | CI/CD pipeline check with threshold |
+| `watch` | Live watch mode with auto-fix |
+| `hooks` | Install git hooks (pre-commit, pre-push) |
+| `llms` | Generate `llms.txt` (AI-friendly project summary) |
+
+### CLI Flags
+
+| Flag | Description | Commands |
+|:-----|:------------|:---------|
+| `--dir <path>` | Project directory (default: `.`) | All |
+| `--verbose` | Show detailed output | All |
+| `--format json` | Machine-readable output for CI/CD | score, guard, diff |
+| `--force` | Overwrite existing files (creates `.bak` backups) | generate, agents, init |
+| `--profile <name>` | Starter, standard, or enterprise | init |
+| `--agent <name>` | Target specific AI agent | agents |
+
+### Example Output
+
 ```
 $ npx docguard-cli generate
 
@@ -124,109 +197,22 @@ $ npx docguard-cli generate
   ✅ ENVIRONMENT.md (18 env vars detected)
   ✅ TEST-SPEC.md (45 tests, 8/10 services mapped)
   ✅ SECURITY.md (auth: NextAuth.js)
+  ✅ REQUIREMENTS.md (spec-kit aligned)
   ✅ AGENTS.md
   ✅ CHANGELOG.md
   ✅ DRIFT-LOG.md
 
-  Generated: 8  Skipped: 0
-```
-
-**Detects:** Next.js, React, Vue, Angular, Fastify, Express, Hono, Django, FastAPI, SvelteKit, and more.  
-**Scans for:** Routes, models, services, tests, env vars, components, middleware.
-
-### 📊 Score — CDD maturity assessment
-```
-$ npx docguard-cli score
-
-  Category Breakdown
-
-  structure      ████████████████████ 100%  (×25) = 25 pts
-  docQuality     ██████████████████░░ 90%   (×20) = 18 pts
-  testing        █████████░░░░░░░░░░░ 45%   (×15) = 7 pts
-  security       █████████████████░░░ 85%   (×10) = 9 pts
-  environment    ██████████████░░░░░░ 70%   (×10) = 7 pts
-  drift          ████████████████████ 100%  (×10) = 10 pts
-  changelog      ██████████████░░░░░░ 70%   (×5)  = 4 pts
-  architecture   █████████████████░░░ 85%   (×5)  = 4 pts
-
-  CDD Maturity Score: 83/100 (A)
-  Great — Strong CDD compliance
-
-  Top improvements:
-  → testing: Add tests/ directory and configure TEST-SPEC.md
-```
-
-### 🔍 Diff — Canonical docs vs code comparison
-```
-$ npx docguard-cli diff
-
-  🛣️ API Routes
-    In code but not documented:
-      + src/routes/webhooks.ts
-      + src/routes/admin/settings.ts
-    ✓ In sync: 12 routes
-
-  🔧 Environment Variables
-    Documented but not found in .env.example:
-      − REDIS_URL
-```
-
-### 🤖 Agents — Generate agent-specific configs
-```
-$ npx docguard-cli agents
-
-  ✅ Cursor: .cursor/rules/cdd.mdc
-  ✅ GitHub Copilot: .github/copilot-instructions.md
-  ✅ Cline: .clinerules
-  ✅ Windsurf: .windsurfrules
-  ✅ Claude Code: CLAUDE.md
-  ✅ Gemini CLI: .gemini/settings.json
-
-  Created: 6  Skipped: 0
-```
-
-### 🔍 Audit — What docs exist/missing
-```
-$ npx docguard-cli audit
-
-  Score: 8/8 required files (100%)
-```
-
-### 🏗️ Init — Create CDD docs from templates
-```
-$ npx docguard-cli init
-
-  Created 9 files (8 docs + .docguard.json)
-```
-
-### 🛡️ Guard — Validate project against docs
-```
-$ npx docguard-cli guard
-
-  ✅ Structure      8/8 checks passed
-  ✅ Doc Sections   10/10 checks passed
-  ✅ Drift          1/1 checks passed
+  Generated: 9  Skipped: 0
 ```
 
 ---
 
-## CLI Flags
+## 🔍 Validators
 
-| Flag | Description | Commands |
-|------|-------------|----------|
-| `--dir <path>` | Project directory (default: `.`) | All |
-| `--verbose` | Show detailed output | All |
-| `--format json` | Output as JSON for CI/CD | score, diff |
-| `--fix` | Auto-create missing files | guard |
-| `--force` | Overwrite existing files | generate, agents, init |
-| `--agent <name>` | Target specific agent | agents |
-
----
-
-## 18 Validators
+DocGuard runs **19 automated validators** on every `guard` check:
 
 | # | Validator | What It Checks | Default |
-|---|-----------|---------------|---------| 
+|:--|:----------|:--------------|:--------|
 | 1 | **Structure** | Required CDD files exist | ✅ On |
 | 2 | **Doc Sections** | Canonical docs have required sections | ✅ On |
 | 3 | **Docs-Sync** | Routes/services referenced in docs + OpenAPI cross-check | ✅ On |
@@ -237,7 +223,7 @@ $ npx docguard-cli guard
 | 8 | **Security** | No hardcoded secrets in source code | ✅ On |
 | 9 | **Architecture** | Imports follow layer boundaries | ✅ On |
 | 10 | **Freshness** | Docs not stale relative to code changes | ✅ On |
-| 11 | **Traceability** | Canonical docs linked to source + V-Model requirement IDs | ✅ On |
+| 11 | **Traceability** | Requirement IDs (FR, SC, NFR, US, AC, T) trace to tests | ✅ On |
 | 12 | **Docs-Diff** | Code artifacts match documented entities | ✅ On |
 | 13 | **Metadata-Sync** | Version refs consistent across docs | ✅ On |
 | 14 | **Docs-Coverage** | Code features referenced in documentation | ✅ On |
@@ -245,26 +231,26 @@ $ npx docguard-cli guard
 | 16 | **Doc-Quality** | Writing quality (readability, passive voice, atomicity) | ✅ On |
 | 17 | **TODO-Tracking** | Untracked TODOs/FIXMEs and skipped tests | ✅ On |
 | 18 | **Schema-Sync** | Database models documented in DATA-MODEL.md | ✅ On |
-| 19 | **Spec-Kit** | GitHub Spec Kit artifact detection and CDD mapping | ✅ On |
+| 19 | **Spec-Kit** | Spec quality validation (FR-IDs, mandatory sections, phased tasks) | ✅ On |
 
 ---
 
-## 18 Templates
+## 📄 Templates
 
-Every template includes professional metadata: `docguard:version`, `docguard:status`, badges, and revision history.
+DocGuard ships **18 professional templates** with metadata, badges, and revision history:
 
 | Template | Type | Purpose |
-|----------|------|---------|
-| ARCHITECTURE.md | Canonical | System design, components, boundaries |
+|:---------|:-----|:--------|
+| ARCHITECTURE.md | Canonical | System design, components, layer boundaries |
 | DATA-MODEL.md | Canonical | Schemas, entities, relationships |
-| SECURITY.md | Canonical | Auth, permissions, secrets |
-| TEST-SPEC.md | Canonical | Required tests, coverage |
-| ENVIRONMENT.md | Canonical | Env vars, setup steps |
+| SECURITY.md | Canonical | Auth, permissions, secrets management |
+| TEST-SPEC.md | Canonical | Test strategy, coverage requirements |
+| ENVIRONMENT.md | Canonical | Environment variables, deployment config |
+| REQUIREMENTS.md | Canonical | Spec-kit aligned FR/SC IDs, user stories |
 | DEPLOYMENT.md | Canonical | Infrastructure, CI/CD, DNS |
 | ADR.md | Canonical | Architecture Decision Records |
 | ROADMAP.md | Canonical | Project phases, feature tracking |
-| REQUIREMENTS.md | Canonical | Requirement IDs, V-Model traceability |
-| KNOWN-GOTCHAS.md | Implementation | Symptom/gotcha/fix entries |
+| KNOWN-GOTCHAS.md | Implementation | Symptom → gotcha → fix entries |
 | TROUBLESHOOTING.md | Implementation | Error diagnosis guides |
 | RUNBOOKS.md | Implementation | Operational procedures |
 | VENDOR-BUGS.md | Implementation | Third-party issue tracker |
@@ -276,48 +262,60 @@ Every template includes professional metadata: `docguard:version`, `docguard:sta
 
 ---
 
-## CDD File Structure
+## 🤖 AI Agent Support
+
+DocGuard works with **every major AI coding agent**. All canonical docs are plain markdown — no vendor lock-in.
+
+| Agent | Compatibility | Auto-Generate Config |
+|:------|:---:|:---:|
+| Google Antigravity | ✅ | `docguard agents --agent antigravity` |
+| Claude Code | ✅ | `docguard agents --agent claude` |
+| GitHub Copilot | ✅ | `docguard agents --agent copilot` |
+| Cursor | ✅ | `docguard agents --agent cursor` |
+| Windsurf | ✅ | `docguard agents --agent windsurf` |
+| Cline | ✅ | `docguard agents --agent cline` |
+| Google Gemini CLI | ✅ | `docguard agents --agent gemini` |
+| Kiro (AWS) | ✅ | — |
+
+---
+
+## ⚡ Slash Commands
+
+DocGuard provides AI agent slash commands for integrated workflows. Installed automatically via `docguard init` or `specify extension add docguard`:
+
+| Command | What It Does |
+|:--------|:-------------|
+| `/docguard.guard` | Run quality validation — check all 19 validators |
+| `/docguard.review` | Analyze doc quality and suggest improvements |
+| `/docguard.fix` | Generate targeted fix prompts for specific issues |
+| `/docguard.score` | Show CDD maturity score with category breakdown |
+
+These commands are installed into your AI agent's command directory:
 
 ```
-your-project/
-├── docs-canonical/              # Design intent (the "blueprint")
-│   ├── ARCHITECTURE.md          # System design, components, boundaries
-│   ├── DATA-MODEL.md            # Database schemas, entity relationships
-│   ├── SECURITY.md              # Auth, permissions, secrets
-│   ├── TEST-SPEC.md             # Required tests, coverage rules
-│   ├── ENVIRONMENT.md           # Environment variables, setup
-│   └── REQUIREMENTS.md          # Requirement IDs, V-Model traceability
-│
-├── docs-implementation/         # Current state (optional)
-│   ├── KNOWN-GOTCHAS.md         # Lessons learned
-│   ├── TROUBLESHOOTING.md       # Error solutions
-│   ├── RUNBOOKS.md              # Operational procedures
-│   └── CURRENT-STATE.md         # What's deployed now
-│
-├── AGENTS.md                    # AI agent behavior rules
-├── CHANGELOG.md                 # Change tracking
-├── DRIFT-LOG.md                 # Documented deviations
-├── llms.txt                     # AI-friendly project summary
-└── .docguard.json              # DocGuard configuration
+.github/commands/     → GitHub Copilot
+.cursor/rules/        → Cursor
+.gemini/commands/     → Google Gemini
+.claude/commands/     → Claude Code
+.agents/workflows/    → Antigravity
 ```
 
 ---
 
-## CI/CD Integration
+## ⚙️ CI/CD Integration
 
 ### GitHub Actions
 
 ```yaml
-name: DocGuard
+name: DocGuard CDD Check
 on: [pull_request]
 jobs:
-  guard:
+  docguard:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+        with: { node-version: '20' }
       - run: npx docguard-cli guard
       - run: npx docguard-cli score --format json
 ```
@@ -325,39 +323,86 @@ jobs:
 ### Pre-commit Hook
 
 ```bash
-# .git/hooks/pre-commit
-#!/bin/sh
-npx docguard-cli guard
+npx docguard-cli hooks --type pre-commit
+```
+
+### GitHub Marketplace
+
+```yaml
+- uses: raccioly/docguard@v0.9.5
+  with:
+    command: guard
+    fail-on-warning: true
 ```
 
 ---
 
-## Agent Compatibility
+## 📁 File Structure
 
-DocGuard works with **every major AI coding agent**:
-
-| Agent | Compatibility | Auto-Generate Config |
-|-------|:---:|:---:|
-| Google Antigravity | ✅ | — |
-| Claude Code | ✅ | `docguard agents --agent claude` |
-| GitHub Copilot | ✅ | `docguard agents --agent copilot` |
-| Cursor | ✅ | `docguard agents --agent cursor` |
-| Windsurf | ✅ | `docguard agents --agent windsurf` |
-| Cline | ✅ | `docguard agents --agent cline` |
-| Gemini CLI | ✅ | `docguard agents --agent gemini` |
-| Kiro (AWS) | ✅ | — |
-
-All canonical docs are **plain markdown** — any agent can read them. No vendor lock-in.
+```
+your-project/
+├── .specify/                        # Spec Kit (if using specify init)
+│   ├── specs/
+│   │   └── 001-feature/
+│   │       ├── spec.md              # Requirements (FR-IDs, user stories)
+│   │       ├── plan.md              # Implementation plan
+│   │       └── tasks.md             # Task breakdown
+│   ├── memory/
+│   │   └── constitution.md          # Project principles
+│   └── templates/
+│
+├── docs-canonical/                  # CDD canonical docs (the "blueprint")
+│   ├── ARCHITECTURE.md              # System design, components
+│   ├── DATA-MODEL.md                # Database schemas
+│   ├── SECURITY.md                  # Auth, permissions, secrets
+│   ├── TEST-SPEC.md                 # Required tests, coverage
+│   ├── ENVIRONMENT.md               # Environment variables
+│   └── REQUIREMENTS.md              # Spec-kit aligned FR/SC IDs
+│
+├── docs-implementation/             # Current state (optional)
+│   ├── KNOWN-GOTCHAS.md
+│   ├── TROUBLESHOOTING.md
+│   ├── RUNBOOKS.md
+│   └── CURRENT-STATE.md
+│
+├── AGENTS.md                        # AI agent behavior rules
+├── CHANGELOG.md                     # Change tracking
+├── DRIFT-LOG.md                     # Documented deviations
+├── llms.txt                         # AI-friendly summary
+└── .docguard.json                   # DocGuard configuration
+```
 
 ---
 
-## Contributing
+## ⚙️ Configuration
 
-We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+Create `.docguard.json` in your project root (auto-generated by `docguard init`):
+
+```json
+{
+  "projectName": "my-project",
+  "version": "0.4",
+  "profile": "standard",
+  "projectType": "webapp",
+  "validators": {
+    "structure": true,
+    "docsSync": true,
+    "drift": true,
+    "changelog": true,
+    "testSpec": true,
+    "security": true,
+    "environment": true,
+    "docQuality": true,
+    "specKit": true
+  }
+}
+```
+
+See [Configuration Guide](docs/configuration.md) for all options.
 
 ---
 
-## Research Credits
+## 🔬 Research Credits
 
 DocGuard's quality evaluation and documentation generation patterns are informed by peer-reviewed research from the University of Arizona and the Joint Interoperability Test Command (JITC), U.S. Department of Defense:
 
@@ -366,11 +411,11 @@ DocGuard's quality evaluation and documentation generation patterns are informed
 
 Lead researcher: **[Martin Manuel Lopez](https://github.com/martinmanuel9)** · [ORCID 0009-0002-7652-2385](https://orcid.org/0009-0002-7652-2385)
 
-See [CONTRIBUTING.md](CONTRIBUTING.md#research--academic-credits) for full citations and concept attributions.
+See [CONTRIBUTING.md](CONTRIBUTING.md#research--academic-credits) for full citations.
 
 ---
 
-## License
+## 📄 License
 
 [MIT](LICENSE) — Free to use, modify, and distribute.
 

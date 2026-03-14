@@ -3,8 +3,8 @@ schema_version: "1.0"
 extension:
   id: "docguard"
   name: "DocGuard — CDD Enforcement"
-  version: "0.9.2"
-  description: "Canonical-Driven Development enforcement. Generates, validates, scores, and traces your project documentation against 127+ automated checks. Zero dependencies."
+  version: "0.9.5"
+  description: "Canonical-Driven Development enforcement. Generates, validates, scores, and traces project documentation against 19 automated validators with spec-kit quality checks, config-aware traceability, and AI-ready fix prompts. Zero dependencies."
   author: "Ricardo Accioly"
   repository: "https://github.com/raccioly/docguard"
   license: "MIT"
@@ -21,38 +21,37 @@ requires:
 
 provides:
   commands:
-    - name: "speckit.docguard.guard"
-      file: "commands/guard.md"
-      description: "Validate project against canonical documentation (92 checks)"
-      aliases: ["speckit.guard"]
+    - name: "docguard.guard"
+      file: "commands/docguard.guard.md"
+      description: "Validate project against canonical documentation (19 validators, spec-kit quality checks)"
+      aliases: ["speckit.docguard.guard"]
+
+    - name: "docguard.review"
+      file: "commands/docguard.review.md"
+      description: "Analyze documentation quality and suggest targeted improvements"
+      aliases: ["speckit.docguard.review"]
+
+    - name: "docguard.fix"
+      file: "commands/docguard.fix.md"
+      description: "Generate AI-ready fix prompts for specific documentation issues"
+      aliases: ["speckit.docguard.fix"]
+
+    - name: "docguard.score"
+      file: "commands/docguard.score.md"
+      description: "Calculate CDD maturity score (0-100) with weighted category breakdown"
+      aliases: ["speckit.docguard.score"]
 
     - name: "speckit.docguard.diagnose"
-      file: "commands/diagnose.md"
-      description: "Diagnose issues and generate AI-ready fix prompts"
-      aliases: ["speckit.diagnose"]
-
-    - name: "speckit.docguard.score"
-      file: "commands/score.md"
-      description: "Calculate CDD maturity score (0-100) with multi-signal breakdown"
-      aliases: ["speckit.score"]
-
-    - name: "speckit.docguard.trace"
-      file: "commands/trace.md"
-      description: "Generate requirements traceability matrix (ISO 29119)"
-      aliases: ["speckit.trace"]
+      file: "commands/docguard.review.md"
+      description: "Diagnose all issues and generate a complete AI remediation plan"
 
     - name: "speckit.docguard.generate"
-      file: "commands/generate.md"
+      file: "commands/docguard.fix.md"
       description: "Reverse-engineer canonical docs from existing codebase"
-      aliases: ["speckit.generate"]
-
-    - name: "speckit.docguard.init"
-      file: "commands/init.md"
-      description: "Initialize CDD in a project with compliance profiles"
 
 hooks:
   after_tasks:
-    command: "speckit.docguard.guard"
+    command: "docguard.guard"
     optional: true
     prompt: "Run DocGuard validation?"
 
@@ -61,6 +60,8 @@ tags:
   - "validation"
   - "quality"
   - "cdd"
+  - "spec-driven"
   - "traceability"
   - "ai-agents"
   - "enforcement"
+  - "spec-kit"
