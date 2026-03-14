@@ -1,7 +1,7 @@
 {
-  "ai": "copilot",
+  "ai": "agy",
   "ai_commands_dir": null,
-  "ai_skills": false,
+  "ai_skills": true,
   "here": true,
   "preset": null,
   "script": "sh",
