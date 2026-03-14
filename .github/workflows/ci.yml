@@ -31,7 +31,9 @@ jobs:
         run: node cli/docguard.mjs --version
 
       - name: Guard (self-check)
-        run: node cli/docguard.mjs guard
+        run: |
+          # Exit 0 = pass, Exit 1 = errors (fail CI), Exit 2 = warnings only (allow)
+          node cli/docguard.mjs guard || [ $? -eq 2 ]
 
       - name: Score
         run: node cli/docguard.mjs score

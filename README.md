@@ -223,7 +223,7 @@ $ npx docguard-cli guard
 
 ---
 
-## 19 Validators
+## 18 Validators
 
 | # | Validator | What It Checks | Default |
 |---|-----------|---------------|---------| 
