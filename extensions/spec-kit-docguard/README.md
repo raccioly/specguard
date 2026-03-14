@@ -1,93 +1,105 @@
-# spec-kit-docguard
+# DocGuard — CDD Enforcement Extension for Spec Kit
 
-> DocGuard extension for [Spec Kit](https://github.com/github/spec-kit) — Canonical-Driven Development enforcement.
-
-[![npm](https://img.shields.io/npm/v/docguard-cli)](https://www.npmjs.com/package/docguard-cli)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-
-## What It Does
-
-Adds 6 DocGuard commands to Spec Kit:
-
-| Command | Description |
-|---------|-------------|
-| `speckit.docguard.guard` | Validate project against canonical docs (150+ checks, 19 validators) |
-| `speckit.docguard.diagnose` | Diagnose issues + generate AI-ready fix prompts |
-| `speckit.docguard.score` | CDD maturity score (0-100) with multi-signal breakdown |
-| `speckit.docguard.trace` | Requirements traceability matrix (ISO 29119) |
-| `speckit.docguard.generate` | Reverse-engineer canonical docs from codebase |
-| `speckit.docguard.init` | Initialize CDD with compliance profiles |
-
-## Installation
-
-### From Community Catalog
-
-```bash
-specify extension add docguard
-```
-
-### Dev / Local Install
-
-```bash
-specify extension add --dev /path/to/spec-kit-docguard
-```
-
-### Direct URL
-
-```bash
-specify extension add --from https://github.com/raccioly/docguard/archive/refs/tags/v0.9.5.zip
-```
-
-## Requirements
-
-- Node.js ≥ 18
-- npx (included with npm)
-
-No other dependencies — DocGuard is zero-dependency.
+Enterprise-grade Canonical-Driven Development (CDD) enforcement for [Spec Kit](https://github.com/github/spec-kit). Validates, scores, and fixes project documentation with 19 automated validators, AI-driven research workflows, and spec-kit integration hooks.
 
 ## Features
 
-### Quality Labels
-`guard` shows `[HIGH]`, `[MEDIUM]`, `[LOW]` badges per validator, so you know exactly where to focus.
+- **19 Validators** — Structure, Security, Doc Quality, Test-Spec, Drift, Freshness, and 13 more
+- **4 AI Skills** — Enterprise-grade AI behavior protocols (not just step-lists)
+- **3 Bash Scripts** — JSON-output orchestration for AI consumption
+- **Workflow Chaining** — YAML handoffs enable guard → fix → review → score flows
+- **Spec Kit Hooks** — Mandatory quality gate after `/speckit.implement`
+- **Zero Dependencies** — Pure Node.js built-ins only
 
-### Config-Aware
-Respects `.docguard.json` — excluded docs are skipped entirely. Orphaned files get cleanup warnings.
-
-### AI-Ready Prompts
-`diagnose` generates copy-paste prompts for your AI agent. Add `--debate` for multi-perspective analysis (Advocate/Challenger/Synthesizer).
-
-### Research-Backed
-Features inspired by peer-reviewed research:
-- **AITPG** (IEEE TSE 2026) — Multi-agent test plan generation
-- **TRACE** (IEEE TMLCN 2026) — Calibrated quality evaluation
-
-Credit: [Martin Manuel Lopez](https://github.com/martinmanuel9) (ORCID [0009-0002-7652-2385](https://orcid.org/0009-0002-7652-2385))
-
-## Compliance Profiles
-
-| Profile | Docs Required | Use Case |
-|---------|--------------|----------|
-| `starter` | ARCHITECTURE.md only | Side projects |
-| `standard` | All 5 canonical docs | Team projects |
-| `enterprise` | All docs + strict validators | Regulated/enterprise |
-
-## Standalone Use
-
-DocGuard also works independently without Spec Kit:
+## Installation
 
 ```bash
 npm install -g docguard-cli
-docguard guard
-docguard score --signals
-docguard trace
 ```
 
-## Links
+Or use via npx:
+```bash
+npx docguard-cli guard
+```
 
-- **npm**: [docguard-cli](https://www.npmjs.com/package/docguard-cli)
-- **GitHub**: [raccioly/docguard](https://github.com/raccioly/docguard)
-- **Philosophy**: [PHILOSOPHY.md](https://github.com/raccioly/docguard/blob/main/PHILOSOPHY.md)
+## Quick Start
+
+```bash
+# Initialize CDD in your project
+docguard init
+
+# Check documentation health
+docguard guard
+
+# Get AI-ready fix prompts
+docguard fix --doc architecture
+
+# Calculate maturity score
+docguard score
+```
+
+## Commands
+
+| Command | Purpose |
+|---------|---------|
+| `docguard.guard` | Run 19-validator quality gate with severity triage |
+| `docguard.fix` | AI-driven documentation repair with codebase research |
+| `docguard.review` | Cross-document semantic consistency analysis (read-only) |
+| `docguard.score` | CDD maturity score with ROI improvement roadmap |
+| `docguard.diagnose` | Diagnose issues + generate multi-perspective AI prompts |
+| `docguard.generate` | Reverse-engineer canonical docs from codebase |
+| `docguard.init` | Initialize CDD structure in a project |
+| `docguard.trace` | Generate requirements traceability matrix |
+
+## AI Skills
+
+DocGuard provides 4 enterprise-grade AI behavior protocols modeled after Spec Kit's skill architecture:
+
+| Skill | Lines | What It Does |
+|-------|:-----:|-------------|
+| `docguard-guard` | 155 | 6-step execution with severity triage, structured reporting, remediation recommendations |
+| `docguard-fix` | 195 | 7-step research workflow with per-document codebase research, 3-iteration validation loops |
+| `docguard-review` | 170 | Semantic cross-document analysis with 6 analysis passes and quality scoring matrix |
+| `docguard-score` | 165 | CDD maturity assessment with ROI-based improvement roadmap and grade progression |
+
+Skills differ from commands in a critical way: **commands tell agents what to run** (step-lists), while **skills tell agents how to think, validate, and iterate** (behavior protocols).
+
+## Spec Kit Integration
+
+### Workflow Hooks
+
+DocGuard integrates into the spec-kit workflow through hooks:
+
+```yaml
+hooks:
+  after_implement:   # Mandatory — always runs after /speckit.implement
+    command: docguard.guard
+  before_tasks:      # Optional — review docs before task generation
+    command: docguard.review
+  after_tasks:       # Optional — show score after tasks
+    command: docguard.score
+```
+
+### Workflow Chaining
+
+All commands support YAML handoffs for seamless workflow chaining:
+
+```
+guard → fix → review → score
+  ↑                      ↓
+  └──────────────────────┘
+```
+
+## Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `docguard-check-docs.sh` | Discover docs, return JSON inventory with metadata |
+| `docguard-suggest-fix.sh` | Run guard, prioritize fixes as JSON |
+| `docguard-init-doc.sh` | Initialize canonical doc with metadata header |
+
+All scripts support `--json` mode for AI-parseable output.
 
 ## License
 
-MIT
+MIT © Ricardo Accioly

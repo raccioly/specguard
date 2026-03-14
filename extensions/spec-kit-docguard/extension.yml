@@ -3,8 +3,8 @@ schema_version: "1.0"
 extension:
   id: "docguard"
   name: "DocGuard — CDD Enforcement"
-  version: "0.9.5"
-  description: "Canonical-Driven Development enforcement. Generates, validates, scores, and traces project documentation against 19 automated validators with spec-kit quality checks, config-aware traceability, and AI-ready fix prompts. Zero dependencies."
+  version: "0.9.6"
+  description: "Canonical-Driven Development enforcement with enterprise-grade AI skills. 19 automated validators, structured research workflows, quality validation loops, and spec-kit integration hooks. Zero dependencies."
   author: "Ricardo Accioly"
   repository: "https://github.com/raccioly/docguard"
   license: "MIT"
@@ -22,38 +22,79 @@ requires:
 provides:
   commands:
     - name: "docguard.guard"
-      file: "commands/docguard.guard.md"
-      description: "Validate project against canonical documentation (19 validators, spec-kit quality checks)"
+      file: "commands/guard.md"
+      description: "Run 19-validator quality gate with severity triage and remediation plan"
       aliases: ["speckit.docguard.guard"]
 
-    - name: "docguard.review"
-      file: "commands/docguard.review.md"
-      description: "Analyze documentation quality and suggest targeted improvements"
-      aliases: ["speckit.docguard.review"]
-
     - name: "docguard.fix"
-      file: "commands/docguard.fix.md"
-      description: "Generate AI-ready fix prompts for specific documentation issues"
+      file: "commands/fix.md"
+      description: "AI-driven documentation repair with codebase research and validation loops"
       aliases: ["speckit.docguard.fix"]
 
+    - name: "docguard.review"
+      file: "commands/review.md"
+      description: "Cross-document semantic consistency analysis (read-only)"
+      aliases: ["speckit.docguard.review"]
+
     - name: "docguard.score"
-      file: "commands/docguard.score.md"
-      description: "Calculate CDD maturity score (0-100) with weighted category breakdown"
+      file: "commands/score.md"
+      description: "CDD maturity score with ROI-based improvement roadmap"
       aliases: ["speckit.docguard.score"]
 
     - name: "speckit.docguard.diagnose"
-      file: "commands/docguard.review.md"
+      file: "commands/review.md"
       description: "Diagnose all issues and generate a complete AI remediation plan"
 
     - name: "speckit.docguard.generate"
-      file: "commands/docguard.fix.md"
+      file: "commands/fix.md"
       description: "Reverse-engineer canonical docs from existing codebase"
 
+  skills:
+    - name: "docguard-guard"
+      path: "skills/docguard-guard/SKILL.md"
+      description: "19-validator quality gate with severity triage and structured reporting"
+
+    - name: "docguard-fix"
+      path: "skills/docguard-fix/SKILL.md"
+      description: "AI-driven documentation repair with research workflow and validation loops"
+
+    - name: "docguard-review"
+      path: "skills/docguard-review/SKILL.md"
+      description: "Cross-document semantic consistency analysis with quality scoring"
+
+    - name: "docguard-score"
+      path: "skills/docguard-score/SKILL.md"
+      description: "CDD maturity assessment with ROI-based improvement roadmap"
+
+  scripts:
+    - name: "docguard-check-docs"
+      path: "scripts/bash/docguard-check-docs.sh"
+      description: "Discover project docs, return JSON inventory with metadata"
+
+    - name: "docguard-suggest-fix"
+      path: "scripts/bash/docguard-suggest-fix.sh"
+      description: "Run guard, parse results, output prioritized fix suggestions"
+
+    - name: "docguard-init-doc"
+      path: "scripts/bash/docguard-init-doc.sh"
+      description: "Initialize a new canonical document with metadata header"
+
 hooks:
-  after_tasks:
+  after_implement:
     command: "docguard.guard"
+    optional: false
+    prompt: "Run DocGuard validation after implementation"
+    description: "Mandatory quality gate — ensures docs stay in sync with code"
+
+  before_tasks:
+    command: "docguard.review"
     optional: true
-    prompt: "Run DocGuard validation?"
+    prompt: "Review documentation consistency before generating tasks?"
+
+  after_tasks:
+    command: "docguard.score"
+    optional: true
+    prompt: "Show CDD maturity score after task generation?"
 
 tags:
   - "documentation"
@@ -65,3 +106,4 @@ tags:
   - "ai-agents"
   - "enforcement"
   - "spec-kit"
+  - "skills"

@@ -1,5 +1,12 @@
 ---
 description: "Diagnose documentation issues and generate AI-ready fix prompts"
+handoffs:
+  - label: Fix All Issues
+    agent: docguard.fix
+    prompt: Fix all documentation issues found
+  - label: Run Guard
+    agent: docguard.guard
+    prompt: Validate all checks pass
 ---
 
 # DocGuard Diagnose

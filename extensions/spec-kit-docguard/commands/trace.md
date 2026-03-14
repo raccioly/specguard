@@ -1,5 +1,12 @@
 ---
 description: "Generate requirements traceability matrix"
+handoffs:
+  - label: Fix Coverage Gaps
+    agent: docguard.fix
+    prompt: Fix traceability gaps found in the matrix
+  - label: Run Guard
+    agent: docguard.guard
+    prompt: Validate traceability checks pass
 ---
 
 # DocGuard Trace

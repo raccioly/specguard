@@ -1,5 +1,12 @@
 ---
 description: "Initialize Canonical-Driven Development in a project"
+handoffs:
+  - label: Generate Docs
+    agent: docguard.fix
+    prompt: Generate documentation content from codebase
+  - label: Check Status
+    agent: docguard.guard
+    prompt: Run guard to see initial status
 ---
 
 # DocGuard Init

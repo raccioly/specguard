@@ -1,33 +1,46 @@
-# /docguard.guard — Validate CDD compliance and fix any issues
+---
+description: Run DocGuard guard validation — check all 19 validators and fix any issues
+handoffs:
+  - label: Fix Issues
+    agent: docguard.fix
+    prompt: Fix all documentation issues found by guard
+  - label: Check Score
+    agent: docguard.score
+    prompt: Show CDD maturity score after fixes
+---
+
+# /docguard.guard — Validate CDD Compliance
 
 You are an AI agent enforcing Canonical-Driven Development (CDD) compliance using DocGuard.
 
 ## Step 1: Run Guard
 
 ```bash
-npx docguard guard
+npx docguard-cli guard
 ```
 
-Read the output. It shows pass/fail for each validator:
-- Structure, Doc Sections, Docs-Sync, Drift, Changelog, Test-Spec, Environment, Freshness
+Read the output. It shows pass (✅), warn (⚠️), or fail (❌) for each of the 19 validators:
+
+| Priority | Validators |
+|----------|-----------|
+| CRITICAL | Structure, Security, Test-Spec |
+| HIGH | Doc Sections, Drift, Changelog, Traceability |
+| MEDIUM | Freshness, Docs-Coverage, Doc-Quality, Metrics-Consistency |
+| LOW | TODO-Tracking, Schema-Sync, Spec-Kit, Metadata-Sync |
 
 ## Step 2: Handle Results
 
 ### If all checks pass:
 Report success and the score:
 ```bash
-npx docguard score
+npx docguard-cli score
 ```
 
 ### If checks fail:
-Run the fix workflow:
+For each failing check, provide an **exact fix** — specific file, section, and content.
+Then run the fix workflow:
 ```bash
-npx docguard fix
-```
-
-Read the output to understand what needs fixing. For documents that need real content:
-```bash
-npx docguard fix --doc <name>
+npx docguard-cli fix --doc <name>
 ```
 
 Execute the research steps in the output, write real content, then re-run guard to verify.
@@ -35,6 +48,6 @@ Execute the research steps in the output, write real content, then re-run guard 
 ## Step 3: Report
 
 Show the user:
-1. Which checks passed/failed
+1. Which checks passed/failed (with severity)
 2. What was fixed
 3. Final CDD score

@@ -1,0 +1,39 @@
+# DocGuard Extension Hooks for Spec Kit
+# Place this file at .specify/extensions.yml in your project root
+# to integrate DocGuard into the spec-kit workflow.
+#
+# DocGuard will automatically run as a quality gate after implementation
+# and optionally before task generation.
+
+schema_version: "1.0"
+
+extension: docguard
+
+hooks:
+  # Run DocGuard guard after /speckit.implement completes
+  # This ensures documentation stays in sync with code changes
+  after_implement:
+    - extension: docguard
+      command: docguard.guard
+      description: "Validate documentation passes CDD standards after implementation"
+      enabled: true
+      optional: false  # Mandatory — always runs after implement
+      prompt: "Run DocGuard guard to verify documentation quality after implementation changes"
+
+  # Run DocGuard review before /speckit.tasks to catch doc drift early
+  before_tasks:
+    - extension: docguard
+      command: docguard.review
+      description: "Review documentation consistency before generating tasks"
+      enabled: true
+      optional: true  # Optional — user can skip
+      prompt: "Run DocGuard review to check documentation health before task generation?"
+
+  # Run DocGuard guard after /speckit.tasks to validate doc coverage
+  after_tasks:
+    - extension: docguard
+      command: docguard.score
+      description: "Show CDD maturity score after task generation"
+      enabled: true
+      optional: true
+      prompt: "Check CDD maturity score after task generation?"

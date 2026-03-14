@@ -21,7 +21,7 @@
 - **Dependencies**: Zero (pure Node.js built-ins)
 - **Testing**: `node:test` (built-in)
 - **Distribution**: npm + PyPI
-- **Version**: 0.9.5
+- **Version**: 0.9.6
 
 ## Key Files
 
@@ -36,7 +36,7 @@
 | `CHANGELOG.md` | Change tracking |
 | `DRIFT-LOG.md` | Documented deviations |
 
-## Commands (13 total)
+## Commands (15 total)
 
 | Command | Purpose |
 |---------|---------|
@@ -53,6 +53,46 @@
 | `watch` | Live watch mode |
 | `hooks` | Install git hooks |
 | `llms` | Generate llms.txt |
+| `badge` | Generate CDD badge |
+| `publish` | Publish validation |
+
+## AI Skills (4 total)
+
+DocGuard provides enterprise-grade AI behavior protocols via the Spec Kit extension:
+
+| Skill | Purpose |
+|-------|---------|
+| `docguard-guard` | 6-step quality gate with severity triage and structured reporting |
+| `docguard-fix` | 7-step research workflow with validation loops (max 3 iterations) |
+| `docguard-review` | Read-only semantic cross-document consistency analysis |
+| `docguard-score` | CDD maturity assessment with ROI-based improvement roadmap |
+
+Skills are located at `extensions/spec-kit-docguard/skills/*/SKILL.md`. They tell agents **how to think**, not just what to run.
+
+## Spec Kit Hooks
+
+DocGuard integrates into the spec-kit workflow:
+
+| Hook | When | Required? |
+|------|------|-----------|
+| `after_implement` | After `/speckit.implement` | Mandatory |
+| `before_tasks` | Before `/speckit.tasks` | Optional |
+| `after_tasks` | After `/speckit.tasks` | Optional |
+
+## Extension Structure
+
+```
+extensions/spec-kit-docguard/
+├── skills/                    # AI behavior protocols
+│   ├── docguard-guard/SKILL.md
+│   ├── docguard-fix/SKILL.md
+│   ├── docguard-review/SKILL.md
+│   └── docguard-score/SKILL.md
+├── scripts/bash/              # Orchestration scripts (--json output)
+├── commands/                  # Spec Kit slash commands
+├── templates/                 # Hook registration templates
+└── extension.yml              # Skills, scripts, hooks declaration
+```
 
 ## Rules
 

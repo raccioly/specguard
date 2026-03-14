@@ -302,6 +302,39 @@ These commands are installed into your AI agent's command directory:
 
 ---
 
+## 🧠 AI Skills (Enterprise)
+
+Beyond slash commands, DocGuard provides **4 enterprise-grade AI skills** — deep behavior protocols that tell AI agents not just *what* to run, but *how to think, validate, and iterate*. Skills are modeled after [Spec Kit's](https://github.com/github/spec-kit) skill architecture.
+
+| Skill | Lines | What It Does |
+|:------|:-----:|:-------------|
+| `docguard-guard` | 155 | 6-step quality gate with severity triage (CRITICAL→LOW), structured reporting, remediation |
+| `docguard-fix` | 195 | 7-step research workflow with per-document codebase research and 3-iteration validation loops |
+| `docguard-review` | 170 | Read-only semantic cross-document analysis with 6 analysis passes and quality scoring |
+| `docguard-score` | 165 | CDD maturity assessment with ROI-based improvement roadmap and grade progression |
+
+### Workflow Hooks
+
+DocGuard integrates into the spec-kit workflow as an automated quality gate:
+
+| Hook | When | Behavior |
+|:-----|:-----|:---------|
+| `after_implement` | After `/speckit.implement` | **Mandatory** — always runs DocGuard guard |
+| `before_tasks` | Before `/speckit.tasks` | Optional — reviews doc consistency |
+| `after_tasks` | After `/speckit.tasks` | Optional — shows CDD maturity score |
+
+### Orchestration Scripts
+
+For advanced users and CI/CD pipelines, DocGuard includes bash scripts with `--json` output:
+
+| Script | Purpose |
+|:-------|:--------|
+| `docguard-check-docs.sh` | Discover project docs, return JSON inventory with metadata |
+| `docguard-suggest-fix.sh` | Run guard, parse results, output prioritized fixes |
+| `docguard-init-doc.sh` | Initialize canonical doc with metadata header |
+
+---
+
 ## ⚙️ CI/CD Integration
 
 ### GitHub Actions

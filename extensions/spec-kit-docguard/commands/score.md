@@ -1,5 +1,12 @@
 ---
 description: "Calculate CDD maturity score with multi-signal quality breakdown"
+handoffs:
+  - label: Improve Score
+    agent: docguard.fix
+    prompt: Fix highest-ROI documentation issues to improve score
+  - label: Deep Review
+    agent: docguard.review
+    prompt: Perform semantic analysis for accuracy verification
 ---
 
 # DocGuard Score

@@ -19,6 +19,10 @@ __pycache__/
 # OS files
 .DS_Store
 
+# Spec Kit templates and scripts (contain placeholder tokens, not actual docs)
+.specify/templates/
+.specify/scripts/
+
 # Backups created by generate --force
 *.bak
 

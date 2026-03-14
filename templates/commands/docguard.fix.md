@@ -1,65 +1,61 @@
-# /docguard.fix — Find and fix all CDD documentation issues
+---
+description: Find and fix all CDD documentation issues using AI-driven research
+handoffs:
+  - label: Verify Fixes
+    agent: docguard.guard
+    prompt: Run guard to verify all fixes pass
+  - label: Check Score
+    agent: docguard.score
+    prompt: Show score improvement after fixes
+---
 
-You are an AI agent responsible for maintaining documentation quality using DocGuard (Canonical-Driven Development).
+# /docguard.fix — Find and Fix CDD Documentation Issues
+
+You are an AI agent responsible for maintaining documentation quality using DocGuard.
 
 ## Step 1: Assess Current State
 
-Run this command and read the output:
-
 ```bash
-npx docguard fix --format json
+npx docguard-cli diagnose
 ```
 
-Parse the JSON result. It will contain:
-- `issueCount`: total number of issues
-- `issues[]`: each issue with `type`, `severity`, `file`, and `fix.ai_instruction`
+Parse the output to identify all issues — categorized as errors or warnings with AI-ready fix prompts.
 
-If `issueCount` is 0, report "All CDD documentation is up to date" and stop.
+If no issues found, report "All CDD documentation is up to date" and stop.
 
 ## Step 2: Fix Each Issue
 
-For each issue in the JSON output:
+For each issue, determine the fix type:
 
-### If type is `missing-file`:
-Run `npx docguard fix --auto` first to create skeleton files, then continue to Step 3.
+| Issue Type | Action |
+|-----------|--------|
+| `missing-file` | Run `npx docguard-cli fix --doc <name>` to generate |
+| `empty-doc` / `partial-doc` | Proceed to Step 3 for codebase research |
+| `missing-config` | Create `.docguard.json` based on project type |
+| `stale-doc` | Update `docguard:last-reviewed` date and content |
+| `quality-issue` | Fix negation language, add missing sections |
 
-### If type is `empty-doc` or `partial-doc`:
-The document exists but has template placeholders or insufficient content.
-Proceed to Step 3 for this document.
+## Step 3: Write Real Content
 
-### If type is `missing-config`:
-Create `.docguard.json` based on the project. Detect the project type from `package.json`.
-
-## Step 3: Write Real Content for Each Document
-
-For each document that needs content, run:
+For each document that needs content:
 
 ```bash
-npx docguard fix --doc <name>
+npx docguard-cli fix --doc <name>
 ```
 
-Where `<name>` is one of: `architecture`, `data-model`, `security`, `test-spec`, `environment`
+Where `<name>` is: `architecture`, `data-model`, `security`, `test-spec`, `environment`
 
 Read the output carefully — it contains:
-- **RESEARCH STEPS**: Exactly what files to read and commands to run to understand the project
-- **WRITE THE DOCUMENT**: The expected structure and content for each section
+- **RESEARCH STEPS**: Exactly what files to read and commands to run
+- **WRITE THE DOCUMENT**: Expected structure and content for each section
 
-Execute the research steps, then write the document with REAL project content. No placeholders.
+Execute the research steps, then write with REAL project content. No placeholders.
 
-## Step 4: Verify
-
-After fixing all documents, run:
+## Step 4: Verify (Iterate up to 3 times)
 
 ```bash
-npx docguard guard
+npx docguard-cli guard
+npx docguard-cli score
 ```
 
-All checks should pass. If any fail, read the output and fix the remaining issues.
-
-Then run:
-
-```bash
-npx docguard score
-```
-
-Report the final CDD score to the user.
+All checks should pass. If any fail, read the output and fix remaining issues. Report the final CDD score.

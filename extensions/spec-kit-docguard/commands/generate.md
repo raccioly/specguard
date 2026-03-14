@@ -1,5 +1,12 @@
 ---
 description: "Reverse-engineer canonical documentation from existing codebase"
+handoffs:
+  - label: Validate Generated Docs
+    agent: docguard.guard
+    prompt: Validate generated documentation passes all checks
+  - label: Review Quality
+    agent: docguard.review
+    prompt: Review quality of generated documentation
 ---
 
 # DocGuard Generate

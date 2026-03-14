@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.6] - 2026-03-14
+
+### Added — Enterprise AI Skills Architecture
+
+#### AI Skills (Spec Kit Extension)
+- **4 enterprise-grade SKILL.md files** modeled after spec-kit's AI behavior protocol pattern:
+  - `docguard-guard` (155 lines) — 6-step execution with severity triage matrix, structured reporting
+  - `docguard-fix` (195 lines) — 7-step research workflow with per-document codebase research, 3-iteration validation loops
+  - `docguard-review` (170 lines) — Read-only semantic cross-document analysis with 6 analysis passes
+  - `docguard-score` (165 lines) — CDD maturity assessment with ROI-based improvement roadmap
+- Skills differ from commands: commands tell agents **what to run**, skills tell agents **how to think, validate, and iterate**
+
+#### Bash Orchestration Scripts
+- `common.sh` — Shared utilities (root detection, CLI detection, JSON helpers)
+- `docguard-check-docs.sh` — Discover project docs, return JSON inventory with metadata
+- `docguard-suggest-fix.sh` — Run guard, parse results, output prioritized fixes as JSON
+- `docguard-init-doc.sh` — Initialize canonical doc with metadata header and template
+
+#### Workflow Chaining & Hooks
+- All 10 commands upgraded with YAML `handoffs` for workflow chaining (guard → fix → review → score)
+- 3 spec-kit workflow hooks: `after_implement` (mandatory guard), `before_tasks` (optional review), `after_tasks` (optional score)
+- `extensions.yml` template for spec-kit hook registration
+
+#### Extension Structure
+- `extension.yml` updated with `skills`, `scripts`, and `hooks` sections
+- Extension README rewritten with complete skills, scripts, hooks, and workflow documentation
+- `extensions/` directory now included in npm package (`package.json` files array)
+
 ## [0.9.5] - 2026-03-14
 
 ### Added — Spec Kit Alignment (Mega Release)

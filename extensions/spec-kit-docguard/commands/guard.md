@@ -1,37 +1,55 @@
 ---
-description: "Validate project against canonical documentation"
+description: "Run 19-validator quality gate with severity triage and actionable remediation"
+handoffs:
+  - label: Fix All Issues
+    agent: docguard.fix
+    prompt: Fix all documentation issues found by guard
+  - label: Deep Review
+    agent: docguard.review
+    prompt: Perform semantic cross-document consistency analysis
+  - label: Check Score
+    agent: docguard.score
+    prompt: Show CDD maturity score and improvement roadmap
 ---
 
 # DocGuard Guard
 
-Validate your project against its canonical documentation. Runs 150+ automated checks across 19 validators with quality labels.
+Validate your project against its canonical documentation. Runs 160+ automated checks across 19 validators.
 
 ## User Input
 
+```text
 $ARGUMENTS
+```
 
-## Steps
+You **MUST** consider the user input before proceeding (if not empty).
 
-1. Run DocGuard guard validation on the current project:
+## Execution
 
+1. Run DocGuard guard validation:
 ```bash
 npx --yes docguard-cli@latest guard $ARGUMENTS
 ```
 
-2. Review the output. Each validator shows:
-   - **[HIGH]** — 90%+ checks passed
-   - **[MEDIUM]** — 50-89% checks passed
-   - **[LOW]** — Below 50% checks passed
+2. Parse each validator's result and build a severity-ranked findings table.
 
-3. If there are failures, run `speckit.docguard.diagnose` for AI-ready fix prompts.
+3. **Triage by severity**:
+   - **CRITICAL**: Structure, Security, Test-Spec failures → fix immediately
+   - **HIGH**: Doc Sections, Drift, Changelog, Traceability → fix before commit
+   - **MEDIUM**: Freshness, Docs-Coverage, Doc-Quality, Metrics → fix this sprint
+   - **LOW**: TODO-Tracking, Schema-Sync, Spec-Kit, Metadata → fix when convenient
 
-## Validators
+4. For each failing check, provide an **exact fix** — specific file, section, and content.
+
+5. Re-run guard after fixes. Iterate until all checks pass (max 3 iterations).
+
+## Validators (19 total)
 
 | Validator | What It Checks |
 |-----------|---------------|
-| Structure | Required files exist (ARCHITECTURE.md, TEST-SPEC.md, etc.) |
+| Structure | Required CDD files exist |
 | Doc Sections | Canonical docs have required sections |
-| Docs-Sync | Code changes reflected in documentation |
+| Docs-Sync | External doc references are valid |
 | Drift | `// DRIFT:` comments have DRIFT-LOG entries |
 | Changelog | CHANGELOG.md is maintained |
 | Test-Spec | TEST-SPEC.md matches actual test files |
@@ -41,6 +59,13 @@ npx --yes docguard-cli@latest guard $ARGUMENTS
 | Freshness | Docs updated after recent code changes |
 | Traceability | Canonical docs linked to source code |
 | Docs-Diff | Entity/route/field drift between code and docs |
+| Metadata-Sync | Metadata headers are consistent |
+| Docs-Coverage | All config files documented |
+| Doc-Quality | Readability, IEEE 830 compliance |
+| TODO-Tracking | TODOs are tracked |
+| Schema-Sync | Schema documentation matches code |
+| Spec-Kit | Spec quality (FR-IDs, sections) |
+| Metrics-Consistency | Internal counts are accurate |
 
 ## Flags
 

@@ -1,35 +1,53 @@
 ---
-description: Review documentation quality — identify improvements and suggest fixes based on CDD and spec-kit standards
+description: Cross-document consistency analysis — semantic review of documentation health, accuracy, and alignment with codebase
+handoffs:
+  - label: Fix Issues Found
+    agent: docguard.fix
+    prompt: Fix the documentation issues identified in the review
+  - label: Run Guard
+    agent: docguard.guard
+    prompt: Validate all documentation passes CDD standards
 ---
 
 # DocGuard Review — Documentation Quality Analysis
 
-Analyze the project's documentation quality and suggest specific improvements.
+Perform comprehensive, read-only analysis of documentation health with semantic cross-document consistency checking.
 
 ## What to do
 
-1. Run the full diagnostic:
+1. **Run the full diagnostic**:
 ```bash
 npx docguard-cli diagnose
-```
-
-2. Run the scoring engine:
-```bash
 npx docguard-cli score
 ```
 
-3. For each issue found, analyze the root cause:
-   - **Missing sections**: Check which mandatory sections are absent from canonical docs
-   - **Low readability**: Identify overly complex sentences or passive voice
-   - **Drift**: Find `// DRIFT:` comments in code not logged in DRIFT-LOG.md
-   - **Stale docs**: Compare doc modification dates against code changes
-   - **Spec quality**: Verify specs have FR-IDs, SC-IDs, and Given/When/Then scenarios
+2. **Perform semantic analysis** (beyond what CLI can check):
 
-4. Suggest specific improvements for each issue. Quote the relevant section and propose the fix.
+   | Analysis Pass | What to Check |
+   |--------------|--------------|
+   | Terminology | Same concepts named consistently across docs |
+   | Architecture ↔ Code | Components listed in ARCHITECTURE.md exist in codebase |
+   | Data Model ↔ Code | Schemas in DATA-MODEL.md match actual implementations |
+   | Test Coverage | Critical flows in TEST-SPEC.md have actual test files |
+   | Security Claims | Auth mechanisms in SECURITY.md match actual code |
+   | Cross-References | Internal doc links resolve to valid targets |
 
-5. Prioritize fixes by impact:
-   - 🔴 HIGH: Missing docs, security issues, broken traceability
-   - 🟡 MEDIUM: Low readability, missing sections, stale content
-   - 🟢 LOW: Minor formatting, missing badges, metadata sync
+3. **Score each document** on 5 dimensions:
 
-6. After making changes, re-run `npx docguard-cli guard` to verify improvements.
+   | Criterion | Weight | What to Evaluate |
+   |-----------|:------:|-----------------|
+   | Completeness | 30% | All mandatory sections present |
+   | Accuracy | 30% | Content matches actual codebase |
+   | Clarity | 20% | Readable, specific, no unexplained jargon |
+   | Currency | 10% | Up-to-date with latest code changes |
+   | Cross-refs | 10% | References are valid and bidirectional |
+
+4. **Classify findings by severity**:
+   - 🔴 **CRITICAL**: Security claim mismatch, missing mandatory doc, broken architecture reference
+   - 🟠 **HIGH**: Undocumented component, stale content (>5 commits behind), terminology conflict
+   - 🟡 **MEDIUM**: Missing cross-reference, minor coverage gap, readability issue
+   - 🟢 **LOW**: Minor formatting, optional section missing, style inconsistency
+
+5. **Output a structured report** with findings table, per-document health scores, and priority-ordered recommendations.
+
+6. **Do NOT modify files** — this is read-only analysis. Suggest fixes for user approval.

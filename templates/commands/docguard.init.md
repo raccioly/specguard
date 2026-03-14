@@ -1,54 +1,61 @@
-# /docguard.init — Set up CDD documentation for this project
+---
+description: Initialize Canonical-Driven Development in a new or existing project
+handoffs:
+  - label: Generate Docs
+    agent: docguard.fix
+    prompt: Generate and populate all canonical documentation from codebase
+  - label: Check Status
+    agent: docguard.guard
+    prompt: Run guard to see initial documentation status
+---
 
-You are an AI agent initializing Canonical-Driven Development (CDD) for a new or existing project using DocGuard.
+# /docguard.init — Set Up CDD Documentation
+
+You are an AI agent initializing Canonical-Driven Development (CDD) for a new or existing project.
 
 ## Step 1: Initialize Skeleton Files
 
 ```bash
-npx docguard init
+npx docguard-cli init
 ```
 
-This creates the folder structure and template files. But the templates are EMPTY — they need real content.
+This creates the folder structure and template files. The templates are skeletons — they need real content.
 
 ## Step 2: Detect and Configure Project Type
-
-Create `.docguard.json` based on what you find:
 
 ```bash
 cat package.json
 ```
 
-Determine:
-- `projectType`: "cli" (has `bin` field), "webapp" (has react/next/vue), "api" (has express/fastify), or "library" (default)
-- `needsE2E`: true for webapps, false for CLIs/libraries
-- `needsEnvVars`: true for APIs/webapps with env config, false for CLIs
-- `needsDatabase`: true if database dependencies found
+Create `.docguard.json` based on what you find:
 
-Write `.docguard.json` with these settings.
+| Signal | Setting |
+|--------|---------|
+| Has `bin` field | `projectType: "cli"` |
+| Has react/next/vue | `projectType: "webapp"`, `needsE2E: true` |
+| Has express/fastify | `projectType: "api"`, `needsEnvVars: true` |
+| Has database deps | `needsDatabase: true` |
+| Default | `projectType: "library"` |
 
 ## Step 3: Write Real Documentation
 
-For each canonical document, generate an AI prompt and write real content:
+For each canonical document, generate a research prompt and write real content:
 
 ```bash
-npx docguard fix --doc architecture
+npx docguard-cli fix --doc architecture
+npx docguard-cli fix --doc data-model
+npx docguard-cli fix --doc security
+npx docguard-cli fix --doc test-spec
+npx docguard-cli fix --doc environment
 ```
 
-Read the output, execute the RESEARCH STEPS, then write the ARCHITECTURE.md with real project content.
+For each: read the output, execute RESEARCH STEPS, then write with real project content.
 
-Repeat for each document:
-```bash
-npx docguard fix --doc data-model
-npx docguard fix --doc security
-npx docguard fix --doc test-spec
-npx docguard fix --doc environment
-```
-
-## Step 4: Verify Everything
+## Step 4: Verify
 
 ```bash
-npx docguard guard
-npx docguard score
+npx docguard-cli guard
+npx docguard-cli score
 ```
 
 All checks should pass. Report the final score.
@@ -56,7 +63,7 @@ All checks should pass. Report the final score.
 ## Step 5: Set Up Git Hooks (Optional)
 
 ```bash
-npx docguard hooks
+npx docguard-cli hooks
 ```
 
-This installs pre-commit (guard), pre-push (score), and commit-msg (conventional commits) hooks.
+Installs pre-commit (guard), pre-push (score), and commit-msg (conventional commits) hooks.

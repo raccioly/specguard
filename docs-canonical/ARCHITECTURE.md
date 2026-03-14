@@ -24,9 +24,10 @@ It targets development teams and AI coding agents that need to maintain document
 | Component | Responsibility | Location | Key Files |
 |-----------|---------------|----------|-----------|
 | **CLI Entry Point** | Argument parsing, config loading, command routing | `cli/` | `docguard.mjs` |
-| **Commands** | 11 user-facing commands (audit, init, guard, score, diff, agents, generate, hooks, badge, ci, fix) | `cli/commands/` | `*.mjs` |
-| **Validators** | 18 independent validation modules that check specific aspects of CDD compliance | `cli/validators/` | `*.mjs` |
+| **Commands** | 15 user-facing commands (diagnose, guard, init, score, fix, generate, diff, agents, trace, ci, watch, hooks, badge, llms, publish) | `cli/commands/` | `*.mjs` |
+| **Validators** | 19 independent validation modules that check specific aspects of CDD compliance | `cli/validators/` | `*.mjs` |
 | **Templates** | Document skeletons (ARCHITECTURE, SECURITY, etc.) and slash command files for AI agents | `templates/` | `*.template`, `commands/*.md` |
+| **Extension** | Spec Kit extension with 4 AI skills, 4 bash scripts, workflow hooks | `extensions/spec-kit-docguard/` | `skills/*/SKILL.md`, `scripts/bash/*.sh` |
 | **VS Code Extension** | Status bar score, inline diagnostics, Code Actions, file watchers | `vscode-extension/` | `extension.js`, `package.json` |
 | **Tests** | Command-level integration tests using `node:test` | `tests/` | `commands.test.mjs` |
 | **Scanners** | Project file scanners for test discovery, route detection, service mapping | `cli/scanners/` | `*.mjs` |
@@ -55,15 +56,16 @@ DocGuard recognizes and validates these project config files:
 
 ## Layer Boundaries
 
-The architecture follows a strict 3-layer model where each layer can only import from the layers below it.
+The architecture follows a strict 4-layer model where each layer can only import from the layers below it.
 
 | Layer | Contains | Can Import From | Cannot Import From |
 |-------|----------|----------------|--------------------|
+| **Extension** (`extensions/spec-kit-docguard/`) | AI skills (SKILL.md), bash scripts, hooks, commands | CLI (via npx), Node.js built-ins | Isolated — spec-kit integration layer |
 | **Commands** (`cli/commands/`) | User-facing command logic | Validators, Config (via `docguard.mjs` exports) | Isolated — each command is self-contained |
 | **Validators** (`cli/validators/`) | Independent validation modules | Node.js built-ins only (`fs`, `path`, `child_process`) | Isolated — pure functions only |
 | **Entry Point** (`cli/docguard.mjs`) | Config loading, ANSI colors, argument parsing, command dispatch | Commands (imports all command modules) | Calls validators only through commands |
 
-**Key Rule**: Validators are pure functions. They receive `projectDir` and `config`, then return results. They stay isolated from commands and the CLI entry point.
+**Key Rule**: Validators are pure functions. They receive `projectDir` and `config`, then return results. They stay isolated from commands and the CLI entry point. The Extension layer operates independently, using the CLI as an external tool.
 
 ```mermaid
 graph TD

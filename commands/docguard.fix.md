@@ -1,21 +1,27 @@
 ---
-description: Generate AI prompts to fix specific documentation issues identified by DocGuard
+description: AI-driven documentation repair — research codebase, generate content, validate against CDD standards
+handoffs:
+  - label: Verify Fixes
+    agent: docguard.guard
+    prompt: Run guard to verify all fixes pass
+  - label: Check Score Improvement
+    agent: docguard.score
+    prompt: Show score improvement after fixes
 ---
 
 # DocGuard Fix — AI-Assisted Documentation Repair
 
-Generate targeted fix prompts for specific documentation issues.
+Generate or repair canonical documentation by researching the actual codebase.
 
 ## What to do
 
-1. First, identify what needs fixing:
+1. **Identify what needs fixing**:
 ```bash
 npx docguard-cli diagnose
 ```
 
-2. Generate fix prompts for specific documents:
+2. **For a specific document**, generate a research-aware fix prompt:
 ```bash
-# Fix a specific canonical doc
 npx docguard-cli fix --doc architecture
 npx docguard-cli fix --doc security
 npx docguard-cli fix --doc test-spec
@@ -23,23 +29,37 @@ npx docguard-cli fix --doc data-model
 npx docguard-cli fix --doc environment
 ```
 
-3. The fix command generates a detailed AI prompt. Read the prompt and execute its instructions:
-   - It will reference the project's actual code structure
-   - It will list specific sections to add or update
-   - It will include examples aligned with the project's tech stack
+3. **Execute the research workflow** from the generated prompt:
+   - Read actual code files (not just filenames)
+   - Map module structure and dependencies
+   - Extract real data structures and schemas
+   - Identify actual auth mechanisms and security patterns
 
-4. After fixing, verify the improvement:
+4. **Write documentation with real content**:
+   - Use actual file paths, module names, dependency names
+   - Include working command examples
+   - Use positive language (IEEE 830: "MUST use" not "MUST NOT avoid")
+   - Ensure Flesch-Kincaid grade level 8-10
+
+5. **Include metadata header** in every canonical doc:
+```markdown
+<!-- docguard:version X.X.X -->
+<!-- docguard:status active -->
+<!-- docguard:last-reviewed YYYY-MM-DD -->
+```
+
+6. **Validate the fix** (iterate up to 3 times):
 ```bash
 npx docguard-cli guard
 ```
 
-5. If the project uses Spec Kit, ensure specs align with spec-kit templates:
-   - `spec.md` must have: User Scenarios, Requirements (FR-IDs), Success Criteria (SC-IDs)
-   - `plan.md` must have: Summary, Technical Context, Project Structure
-   - `tasks.md` must have: Phased breakdown (Phase 1, 2, 3+), Task IDs (T001+)
+7. If the project uses Spec Kit, align with spec-kit templates:
+   - `spec.md`: User Scenarios, Requirements (FR-IDs), Success Criteria (SC-IDs)
+   - `plan.md`: Summary, Technical Context, Project Structure
+   - `tasks.md`: Phased breakdown (Phase 1, 2, 3+), Task IDs (T001+)
 
 ## Important
 
-- Never overwrite existing documentation without creating a `.bak` backup
-- Use `--force` only when explicitly instructed by the user
-- Log any deviations from canonical docs in DRIFT-LOG.md with `// DRIFT: reason`
+- Never use placeholder content — every section must reference real code
+- Back up before overwriting — use `.bak` files or `safeWrite()`
+- Log deviations in DRIFT-LOG.md with `// DRIFT: reason`

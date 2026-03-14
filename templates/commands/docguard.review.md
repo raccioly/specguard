@@ -1,44 +1,54 @@
-# /docguard.review — Review documentation vs code for drift
+---
+description: Review documentation quality — identify drift, coverage gaps, and improvements
+handoffs:
+  - label: Fix Issues
+    agent: docguard.fix
+    prompt: Fix the documentation issues identified in the review
+  - label: Run Guard
+    agent: docguard.guard
+    prompt: Validate all checks pass after review
+---
+
+# /docguard.review — Review Documentation vs Code
 
 You are an AI agent reviewing documentation quality and detecting drift between docs and code.
 
-## Step 1: Run Diff
+## Step 1: Run Diagnostics
 
 ```bash
-npx docguard diff
+npx docguard-cli diagnose
+npx docguard-cli diff
+npx docguard-cli score
 ```
 
-Read the output carefully. It shows where documentation no longer matches the codebase.
+Read all output. Identify where documentation no longer matches the codebase.
 
-## Step 2: Run Guard
+## Step 2: Semantic Analysis (Beyond CLI)
 
-```bash
-npx docguard guard
-```
+For each canonical doc, verify alignment with actual code:
 
-Note any failed validators — these indicate docs that need updating.
+| Analysis | What to Check |
+|----------|--------------|
+| Architecture ↔ Code | Components in ARCHITECTURE.md exist as real modules |
+| Data Model ↔ Code | Schemas in DATA-MODEL.md match actual implementations |
+| Security Claims | Auth mechanisms in SECURITY.md match actual code |
+| Test Coverage | Critical flows in TEST-SPEC.md have actual test files |
+| Terminology | Same concepts named consistently across all docs |
 
-## Step 3: Check Freshness
-
-For each file listed in the guard output with a freshness warning:
-1. Read the document
-2. Read the related source code
-3. Compare: does the doc accurately describe the current code?
-4. If not, update the doc to match reality
-
-## Step 4: Update Stale Docs
+## Step 3: Update Stale Docs
 
 For each stale or drifted document:
 1. Read the relevant source code files
-2. Update the document to match current implementation
+2. Update the specific section that changed
 3. Update the `docguard:last-reviewed` date to today
 4. If the change is intentional drift, add an entry to DRIFT-LOG.md
+5. Add entry to CHANGELOG.md under [Unreleased]
 
-## Step 5: Verify
+## Step 4: Verify
 
 ```bash
-npx docguard guard
-npx docguard score
+npx docguard-cli guard
+npx docguard-cli score
 ```
 
-Report the final results to the user.
+Report findings, changes made, and the final score.

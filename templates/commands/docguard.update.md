@@ -1,4 +1,15 @@
-# /docguard.update — Update canonical docs after code changes
+---
+description: Update canonical docs after code changes — detect drift and sync documentation
+handoffs:
+  - label: Run Guard
+    agent: docguard.guard
+    prompt: Validate all checks pass after updates
+  - label: Check Score
+    agent: docguard.score
+    prompt: Show CDD maturity score after updates
+---
+
+# /docguard.update — Update Docs After Code Changes
 
 You are an AI agent that updates documentation to reflect recent code changes.
 
@@ -37,8 +48,8 @@ For each affected document:
 ## Step 4: Verify
 
 ```bash
-npx docguard guard
-npx docguard score
+npx docguard-cli guard
+npx docguard-cli score
 ```
 
-All checks should pass. Report the changes made.
+All checks should pass. Report the changes made and the final score.
