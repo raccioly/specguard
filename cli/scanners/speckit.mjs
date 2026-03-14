@@ -1,30 +1,114 @@
 /**
- * Spec Kit Scanner — Detect and integrate with GitHub Spec Kit artifacts
+ * Spec Kit Scanner — Detect, validate, and integrate with GitHub Spec Kit
  *
- * Auto-detects .specify/ directory (Spec Kit projects) and maps Spec Kit
- * artifacts to CDD canonical docs. Enables DocGuard to work seamlessly
- * with Spec Kit-managed projects.
+ * Auto-detects Spec Kit artifacts and validates their quality against
+ * spec-kit standards (github.com/github/spec-kit).
  *
- * Spec Kit artifact mapping:
- *   .specify/           → Project uses Spec Kit
- *   specs/[name]/spec.md  → Requirements (maps to REQUIREMENTS.md / docs-canonical/)
- *   specs/[name]/plan.md  → Design decisions (maps to ARCHITECTURE.md)
- *   specs/[name]/tasks.md → Work items (maps to ROADMAP.md)
- *   constitution.md      → Project rules (maps to AGENTS.md)
- *   memory/              → Learned context (maps to DRIFT-LOG.md)
+ * v0.9.5 — Aligned with spec-kit's actual file structure:
+ *   .specify/                          → Project uses Spec Kit
+ *   .specify/specs/NNN-feature/spec.md → Requirements (FR-IDs, User Scenarios)
+ *   .specify/specs/NNN-feature/plan.md → Implementation plan (Technical Context)
+ *   .specify/specs/NNN-feature/tasks.md → Task breakdown (Phased)
+ *   .specify/memory/constitution.md    → Project governing principles
  *
- * Credit: Integration inspired by GitHub's Spec Kit framework
+ * Also supports legacy paths (pre-v3 spec-kit):
+ *   specs/[name]/spec.md              → Legacy spec location
+ *   constitution.md                   → Legacy constitution at root
+ *   memory/                           → Legacy memory at root
+ *
+ * Credit: Integration with GitHub's Spec Kit framework
  *         (github.com/github/spec-kit)
  *
  * Zero dependencies — pure Node.js built-ins only.
  */
 
-import { existsSync, readFileSync, readdirSync, writeFileSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync, copyFileSync, writeFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
+
+// ──── Spec Kit Mandatory Sections ────
+// Based on spec-kit's spec-template.md, plan-template.md, tasks-template.md
+
+const SPEC_MANDATORY_SECTIONS = [
+  'User Scenarios',        // or "User Stories"
+  'Requirements',          // must have FR-xxx IDs
+  'Success Criteria',      // must have SC-xxx IDs
+];
+
+const PLAN_MANDATORY_SECTIONS = [
+  'Summary',
+  'Technical Context',
+  'Project Structure',
+];
+
+const TASKS_MANDATORY_PATTERNS = [
+  /Phase\s+\d/i,           // Must have phased breakdown
+];
+
+// ──── Safety Helper ────
+
+/**
+ * Create a .bak backup before overwriting existing files.
+ */
+function backupFile(filePath) {
+  if (existsSync(filePath)) {
+    try {
+      const content = readFileSync(filePath, 'utf-8');
+      if (content.trim().length > 0) {
+        copyFileSync(filePath, filePath + '.bak');
+      }
+    } catch { /* non-fatal */ }
+  }
+}
+
+function safeWrite(filePath, content) {
+  backupFile(filePath);
+  writeFileSync(filePath, content, 'utf-8');
+}
+
+// ──── Detection ────
+
+/**
+ * Scan a specs directory for feature spec folders.
+ * Returns array of { name, hasSpec, hasPlan, hasTasks, specPath, planPath, tasksPath }.
+ */
+function scanSpecsDir(specsDir) {
+  const specs = [];
+  if (!existsSync(specsDir)) return specs;
+
+  try {
+    const features = readdirSync(specsDir);
+    for (const feature of features) {
+      const featureDir = join(specsDir, feature);
+      try {
+        if (!statSync(featureDir).isDirectory()) continue;
+      } catch { continue; }
+
+      const specFile = join(featureDir, 'spec.md');
+      const planFile = join(featureDir, 'plan.md');
+      const tasksFile = join(featureDir, 'tasks.md');
+
+      if (existsSync(specFile) || existsSync(planFile) || existsSync(tasksFile)) {
+        specs.push({
+          name: feature,
+          hasSpec: existsSync(specFile),
+          hasPlan: existsSync(planFile),
+          hasTasks: existsSync(tasksFile),
+          specPath: existsSync(specFile) ? specFile : null,
+          planPath: existsSync(planFile) ? planFile : null,
+          tasksPath: existsSync(tasksFile) ? tasksFile : null,
+        });
+      }
+    }
+  } catch { /* ignore */ }
+
+  return specs;
+}
 
 /**
  * Detect if a project uses Spec Kit.
- * Returns details about detected Spec Kit artifacts.
+ * Checks both spec-kit v3+ paths (.specify/) and legacy paths.
+ *
+ * @returns {{ detected, specifyDir, specs[], constitution, constitutionPath, memory, source }}
  */
 export function detectSpecKit(projectDir) {
   const result = {
@@ -32,87 +116,189 @@ export function detectSpecKit(projectDir) {
     specifyDir: false,
     specs: [],
     constitution: false,
+    constitutionPath: null,
     memory: false,
+    source: null,  // 'specify' (v3+) or 'legacy'
   };
 
-  // Check for .specify/ directory
+  // ── 1. Check for .specify/ directory (v3+ standard) ──
   const specifyDir = resolve(projectDir, '.specify');
   if (existsSync(specifyDir)) {
     result.detected = true;
     result.specifyDir = true;
+    result.source = 'specify';
+
+    // Specs under .specify/specs/ (v3 standard path)
+    const v3Specs = scanSpecsDir(resolve(specifyDir, 'specs'));
+    if (v3Specs.length > 0) {
+      result.specs.push(...v3Specs);
+    }
+
+    // Constitution at .specify/memory/constitution.md (v3 standard)
+    const v3Constitution = resolve(specifyDir, 'memory', 'constitution.md');
+    if (existsSync(v3Constitution)) {
+      result.constitution = true;
+      result.constitutionPath = v3Constitution;
+    }
+
+    // Memory directory at .specify/memory/ (v3 standard)
+    const v3Memory = resolve(specifyDir, 'memory');
+    if (existsSync(v3Memory)) {
+      result.memory = true;
+    }
   }
 
-  // Check for specs/ directory with spec.md files
-  const specsDir = resolve(projectDir, 'specs');
-  if (existsSync(specsDir)) {
-    try {
-      const features = readdirSync(specsDir);
-      for (const feature of features) {
-        const featureDir = join(specsDir, feature);
-        try {
-        const fstat = statSync(featureDir);
-        if (!fstat.isDirectory()) continue;
-        } catch { continue; }
-
-        const specFile = join(featureDir, 'spec.md');
-        const planFile = join(featureDir, 'plan.md');
-        const tasksFile = join(featureDir, 'tasks.md');
-
-        if (existsSync(specFile) || existsSync(planFile) || existsSync(tasksFile)) {
-          result.detected = true;
-          result.specs.push({
-            name: feature,
-            hasSpec: existsSync(specFile),
-            hasPlan: existsSync(planFile),
-            hasTasks: existsSync(tasksFile),
-          });
-        }
-      }
-    } catch { /* ignore */ }
+  // ── 2. Legacy paths (fallback for pre-v3 or manual setups) ──
+  // Only check legacy if not already detected via .specify/
+  if (result.specs.length === 0) {
+    const legacySpecs = scanSpecsDir(resolve(projectDir, 'specs'));
+    if (legacySpecs.length > 0) {
+      result.detected = true;
+      result.source = result.source || 'legacy';
+      result.specs.push(...legacySpecs);
+    }
   }
 
-  // Check for constitution.md
-  const constitutionPath = resolve(projectDir, 'constitution.md');
-  if (existsSync(constitutionPath)) {
-    result.detected = true;
-    result.constitution = true;
+  // Constitution at project root (legacy)
+  if (!result.constitution) {
+    const rootConstitution = resolve(projectDir, 'constitution.md');
+    if (existsSync(rootConstitution)) {
+      result.detected = true;
+      result.constitution = true;
+      result.constitutionPath = rootConstitution;
+      result.source = result.source || 'legacy';
+    }
   }
 
-  // Check for memory/ directory
-  const memoryDir = resolve(projectDir, 'memory');
-  if (existsSync(memoryDir)) {
-    result.detected = true;
-    result.memory = true;
+  // Memory at project root (legacy)
+  if (!result.memory) {
+    const rootMemory = resolve(projectDir, 'memory');
+    if (existsSync(rootMemory)) {
+      result.detected = true;
+      result.memory = true;
+      result.source = result.source || 'legacy';
+    }
   }
 
   return result;
 }
 
+// ──── Quality Validation ────
+
 /**
- * Map Spec Kit artifact to CDD equivalent.
- * Returns the canonical doc name and section.
+ * Check if a markdown file contains specific section headings.
+ *
+ * @param {string} content - File content
+ * @param {string[]} sections - Required section heading texts
+ * @returns {{ found: string[], missing: string[] }}
  */
+function checkSections(content, sections) {
+  const found = [];
+  const missing = [];
+
+  for (const section of sections) {
+    // Match both "## Requirements" and "### Functional Requirements"
+    const pattern = new RegExp(`^#{1,4}\\s+.*${section.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'im');
+    if (pattern.test(content)) {
+      found.push(section);
+    } else {
+      missing.push(section);
+    }
+  }
+
+  return { found, missing };
+}
+
+/**
+ * Validate the quality of a spec.md file against spec-kit standards.
+ *
+ * Checks:
+ *   - Has mandatory sections (User Scenarios, Requirements, Success Criteria)
+ *   - Has FR-xxx requirement IDs
+ *   - Has acceptance scenarios (Given/When/Then)
+ */
+function validateSpecQuality(specPath) {
+  const issues = [];
+  const content = readFileSync(specPath, 'utf-8');
+
+  // Check mandatory sections
+  const { missing } = checkSections(content, SPEC_MANDATORY_SECTIONS);
+  for (const section of missing) {
+    issues.push(`Missing mandatory section: "${section}" (spec-kit spec-template.md)`);
+  }
+
+  // Check for FR-xxx or FR-NNN requirement IDs
+  const hasFRIds = /\b(FR|REQ|NFR)-\d{2,4}\b/.test(content);
+  if (!hasFRIds) {
+    issues.push('No requirement IDs found (expected FR-001, REQ-001, etc.)');
+  }
+
+  // Check for SC-xxx success criteria IDs
+  const hasSCIds = /\bSC-\d{2,4}\b/.test(content);
+  if (!hasSCIds) {
+    issues.push('No success criteria IDs found (expected SC-001, SC-002, etc.)');
+  }
+
+  return issues;
+}
+
+/**
+ * Validate the quality of a plan.md file.
+ */
+function validatePlanQuality(planPath) {
+  const issues = [];
+  const content = readFileSync(planPath, 'utf-8');
+
+  const { missing } = checkSections(content, PLAN_MANDATORY_SECTIONS);
+  for (const section of missing) {
+    issues.push(`Missing mandatory section: "${section}" (spec-kit plan-template.md)`);
+  }
+
+  return issues;
+}
+
+/**
+ * Validate the quality of a tasks.md file.
+ */
+function validateTasksQuality(tasksPath) {
+  const issues = [];
+  const content = readFileSync(tasksPath, 'utf-8');
+
+  // Must have phased breakdown
+  const hasPhases = TASKS_MANDATORY_PATTERNS.some(p => p.test(content));
+  if (!hasPhases) {
+    issues.push('No phased task breakdown found (expected "Phase 1:", "Phase 2:", etc.)');
+  }
+
+  // Must have task IDs
+  const hasTaskIds = /\bT\d{3}\b/.test(content);
+  if (!hasTaskIds) {
+    issues.push('No task IDs found (expected T001, T002, etc.)');
+  }
+
+  return issues;
+}
+
+// ──── CDD Mapping ────
+
 const SPECKIT_CDD_MAP = {
   'spec.md': { cddDoc: 'REQUIREMENTS.md', section: 'Requirements', type: 'requirement' },
   'plan.md': { cddDoc: 'ARCHITECTURE.md', section: 'Design Decisions', type: 'design' },
   'tasks.md': { cddDoc: 'ROADMAP.md', section: 'Task Backlog', type: 'roadmap' },
 };
 
+// ──── Generate from Spec Kit ────
+
 /**
  * Generate CDD canonical docs from Spec Kit artifacts.
  * Used by `docguard generate --from-speckit`.
- *
- * @param {string} projectDir - Project root
- * @param {object} config - DocGuard config
- * @param {object} flags - CLI flags
- * @returns {object} - { generated: string[], skipped: string[], errors: string[] }
  */
 export function generateFromSpecKit(projectDir, config, flags) {
   const results = { generated: [], skipped: [], errors: [] };
 
   const speckit = detectSpecKit(projectDir);
   if (!speckit.detected) {
-    results.errors.push('No Spec Kit artifacts detected. This project does not use Spec Kit.');
+    results.errors.push('No Spec Kit artifacts detected. Run `specify init` to initialize, or install via: uv tool install specify-cli --from git+https://github.com/github/spec-kit.git');
     return results;
   }
 
@@ -131,8 +317,7 @@ export function generateFromSpecKit(projectDir, config, flags) {
 
       for (const spec of speckit.specs) {
         if (!spec.hasSpec) continue;
-        const specPath = join(projectDir, 'specs', spec.name, 'spec.md');
-        const content = readFileSync(specPath, 'utf-8');
+        const content = readFileSync(spec.specPath, 'utf-8');
 
         lines.push(`## ${spec.name}`);
         lines.push('');
@@ -144,20 +329,17 @@ export function generateFromSpecKit(projectDir, config, flags) {
 
       lines.push(`<!-- Generated by DocGuard from Spec Kit artifacts on ${new Date().toISOString().split('T')[0]} -->`);
 
-      writeFileSync(reqPath, lines.join('\n'), 'utf-8');
+      safeWrite(reqPath, lines.join('\n'));
       results.generated.push('REQUIREMENTS.md');
     }
   }
 
   // ── Map constitution.md to AGENTS.md context ──
   if (speckit.constitution) {
-    const constitutionPath = resolve(projectDir, 'constitution.md');
     const agentsPath = resolve(projectDir, 'AGENTS.md');
 
     if (existsSync(agentsPath)) {
       const agentsContent = readFileSync(agentsPath, 'utf-8');
-
-      // Check if AGENTS.md already references constitution
       if (!agentsContent.includes('constitution.md') && !agentsContent.includes('Constitution')) {
         results.skipped.push('AGENTS.md exists but does not reference constitution.md — consider adding a reference');
       } else {
@@ -166,17 +348,27 @@ export function generateFromSpecKit(projectDir, config, flags) {
     }
   }
 
-  // ── Map memory/ to DRIFT-LOG.md context ──
+  // ── Map memory/ to DRIFT-LOG.md ──
   if (speckit.memory) {
-    results.skipped.push('memory/ directory detected — maps conceptually to DRIFT-LOG.md (no auto-generation needed)');
+    results.skipped.push('memory/ directory detected — maps conceptually to DRIFT-LOG.md');
   }
 
   return results;
 }
 
+// ──── Guard Validator ────
+
 /**
- * Validate Spec Kit artifact consistency.
- * Used by guard to give CDD credit for Spec Kit artifacts.
+ * Validate Spec Kit integration quality.
+ *
+ * When spec-kit is NOT detected:
+ *   - Shows 1 informational warning suggesting spec-kit
+ *
+ * When spec-kit IS detected:
+ *   - Validates spec.md quality (mandatory sections, FR-IDs, SC-IDs)
+ *   - Validates plan.md quality (mandatory sections)
+ *   - Validates tasks.md quality (phased breakdown, T-IDs)
+ *   - Checks constitution → AGENTS.md mapping
  *
  * @returns {{ errors: string[], warnings: string[], passed: number, total: number }}
  */
@@ -185,41 +377,80 @@ export function validateSpecKitIntegration(projectDir, config) {
 
   const speckit = detectSpecKit(projectDir);
 
-  // If no Spec Kit detected, silently pass
+  // If no Spec Kit detected, suggest it
   if (!speckit.detected) {
+    results.total++;
+    results.warnings.push(
+      'No Spec Kit artifacts detected. Consider `specify init` for spec-driven development (github.com/github/spec-kit)'
+    );
     return results;
   }
 
-  // Check 1: .specify/ directory exists → Spec Kit initialized
+  // ── Check 1: .specify/ directory exists ──
   results.total++;
   if (speckit.specifyDir) {
     results.passed++;
   } else {
-    results.warnings.push('Spec Kit artifacts detected but .specify/ directory missing. Run `specify init` to initialize');
+    results.warnings.push(
+      'Spec Kit artifacts found but .specify/ directory missing. Run `specify init` to create standard structure'
+    );
   }
 
-  // Check 2: Each spec has corresponding canonical doc coverage
+  // ── Check 2: Validate each spec's quality ──
   for (const spec of speckit.specs) {
-    if (spec.hasSpec) {
+    // 2a: spec.md quality
+    if (spec.hasSpec && spec.specPath) {
       results.total++;
-      // Check if spec.md content appears in any canonical doc
-      const specPath = join(projectDir, 'specs', spec.name, 'spec.md');
-      const content = readFileSync(specPath, 'utf-8');
+      try {
+        const issues = validateSpecQuality(spec.specPath);
+        if (issues.length === 0) {
+          results.passed++;
+        } else {
+          for (const issue of issues) {
+            results.warnings.push(`specs/${spec.name}/spec.md: ${issue}`);
+          }
+        }
+      } catch {
+        results.warnings.push(`specs/${spec.name}/spec.md: Could not read file`);
+      }
+    }
 
-      // Look for requirement IDs in the spec
-      const hasReqIds = /\b(REQ|FR|NFR|US|STORY|AC)-\d{2,4}\b/.test(content);
+    // 2b: plan.md quality
+    if (spec.hasPlan && spec.planPath) {
+      results.total++;
+      try {
+        const issues = validatePlanQuality(spec.planPath);
+        if (issues.length === 0) {
+          results.passed++;
+        } else {
+          for (const issue of issues) {
+            results.warnings.push(`specs/${spec.name}/plan.md: ${issue}`);
+          }
+        }
+      } catch {
+        results.warnings.push(`specs/${spec.name}/plan.md: Could not read file`);
+      }
+    }
 
-      if (hasReqIds) {
-        results.passed++;
-      } else {
-        results.warnings.push(
-          `specs/${spec.name}/spec.md has no requirement IDs. Add IDs (e.g., REQ-001) for traceability`
-        );
+    // 2c: tasks.md quality
+    if (spec.hasTasks && spec.tasksPath) {
+      results.total++;
+      try {
+        const issues = validateTasksQuality(spec.tasksPath);
+        if (issues.length === 0) {
+          results.passed++;
+        } else {
+          for (const issue of issues) {
+            results.warnings.push(`specs/${spec.name}/tasks.md: ${issue}`);
+          }
+        }
+      } catch {
+        results.warnings.push(`specs/${spec.name}/tasks.md: Could not read file`);
       }
     }
   }
 
-  // Check 3: Constitution mapped to AGENTS.md
+  // ── Check 3: Constitution → AGENTS.md mapping ──
   if (speckit.constitution) {
     results.total++;
     const agentsPath = resolve(projectDir, 'AGENTS.md');

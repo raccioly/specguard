@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.5] - 2026-03-14
+
+### Added — Spec Kit Alignment (Mega Release)
+
+#### Spec Kit Scanner Rewrite
+- **Correct file paths**: Now checks `.specify/specs/NNN-feature/spec.md` (v3+ standard) with fallback to legacy `specs/*/spec.md`
+- **Constitution detection**: Checks `.specify/memory/constitution.md` (v3+) with fallback to root `constitution.md`
+- **Spec quality validation**: Validates mandatory sections (User Scenarios, Requirements, Success Criteria), FR-IDs, SC-IDs per spec-kit spec-template.md
+- **Plan quality validation**: Checks for Summary, Technical Context, Project Structure sections
+- **Tasks quality validation**: Verifies phased breakdown (Phase 1, 2+) and T-xxx task IDs
+- **Informational warning**: Spec-Kit validator now suggests `specify init` when no spec-kit artifacts found (was silent `0/0`)
+
+#### Traceability Enhancement
+- **SC-xxx** (Success Criteria) added to requirement ID patterns — aligns with spec-kit SC-001 format
+- **T-xxx** (Task IDs) added — recognizes spec-kit T001, T002 task identifiers
+- Scans `.specify/specs/` path in addition to legacy `specs/`
+
+#### Slash Commands (Spec Kit Extension)
+- New `commands/` directory with 4 AI agent slash commands: `/docguard.guard`, `/docguard.review`, `/docguard.fix`, `/docguard.score`
+- Shipped as part of npm package — available via `specify extension add docguard`
+- Works with Claude Code, Copilot, Cursor, Gemini, Antigravity, and more
+
+#### REQUIREMENTS.md Template
+- New `REQUIREMENTS.md.template` aligned with spec-kit FR-xxx, SC-xxx, Given/When/Then standards
+- Added to `docguard init` template catalog (defaultYes: true)
+
+#### Python Support (PyPI)
+- `pyproject.toml` and `docguard_cli/wrapper.py` for `pip install docguard-cli`
+- Thin Python wrapper delegates to `npx docguard-cli` — requires Node.js 18+
+- Python developers can now use `docguard guard`, `docguard score`, etc.
+
+### Fixed
+- `speckit.mjs` writeFileSync → safeWrite (backup safety, same as v0.9.4 pattern)
+
 ## [0.9.4] - 2026-03-13
 
 ### Fixed — Critical: Generate File Safety (Data Loss Prevention)

@@ -72,6 +72,7 @@ const TRACE_MAP = {
 
 // ──── Default requirement ID patterns ────
 // Users can override via config.traceability.requirementPattern
+// Includes spec-kit standard IDs: FR-xxx, SC-xxx, T-xxx
 const DEFAULT_REQ_PATTERNS = [
   /\b(REQ)-(\d{2,4})\b/g,
   /\b(FR)-(\d{2,4})\b/g,
@@ -83,6 +84,8 @@ const DEFAULT_REQ_PATTERNS = [
   /\b(SYS)-(\d{2,4})\b/g,
   /\b(ARCH)-(\d{2,4})\b/g,
   /\b(MOD)-(\d{2,4})\b/g,
+  /\b(SC)-(\d{2,4})\b/g,     // Spec Kit: Success Criteria
+  /\b(T)(\d{3,4})\b/g,       // Spec Kit: Task IDs (T001, T002)
 ];
 
 /**
@@ -305,15 +308,20 @@ function getRequirementDocPaths(projectDir, config) {
     if (existsSync(p) && !paths.includes(p)) paths.push(p);
   }
 
-  // Spec Kit artifacts: specs/*/spec.md
-  const specsDir = resolve(projectDir, 'specs');
-  if (existsSync(specsDir)) {
-    try {
-      for (const feature of readdirSync(specsDir)) {
-        const specPath = join(specsDir, feature, 'spec.md');
-        if (existsSync(specPath)) paths.push(specPath);
-      }
-    } catch { /* ignore */ }
+  // Spec Kit artifacts: .specify/specs/*/spec.md (v3+) and specs/*/spec.md (legacy)
+  const specKitDirs = [
+    resolve(projectDir, '.specify', 'specs'),  // v3+ standard
+    resolve(projectDir, 'specs'),               // legacy
+  ];
+  for (const specsDir of specKitDirs) {
+    if (existsSync(specsDir)) {
+      try {
+        for (const feature of readdirSync(specsDir)) {
+          const specPath = join(specsDir, feature, 'spec.md');
+          if (existsSync(specPath) && !paths.includes(specPath)) paths.push(specPath);
+        }
+      } catch { /* ignore */ }
+    }
   }
 
   return paths;
