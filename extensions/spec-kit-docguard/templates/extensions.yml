@@ -14,16 +14,16 @@ hooks:
   # This ensures documentation stays in sync with code changes
   after_implement:
     - extension: docguard
-      command: docguard.guard
+      command: speckit.docguard.guard
       description: "Validate documentation passes CDD standards after implementation"
       enabled: true
-      optional: false  # Mandatory — always runs after implement
-      prompt: "Run DocGuard guard to verify documentation quality after implementation changes"
+      optional: true
+      prompt: "Run DocGuard guard to verify documentation quality after implementation changes?"
 
   # Run DocGuard review before /speckit.tasks to catch doc drift early
   before_tasks:
     - extension: docguard
-      command: docguard.review
+      command: speckit.docguard.review
       description: "Review documentation consistency before generating tasks"
       enabled: true
       optional: true  # Optional — user can skip
@@ -32,7 +32,7 @@ hooks:
   # Run DocGuard guard after /speckit.tasks to validate doc coverage
   after_tasks:
     - extension: docguard
-      command: docguard.score
+      command: speckit.docguard.score
       description: "Show CDD maturity score after task generation"
       enabled: true
       optional: true

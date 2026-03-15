@@ -8,7 +8,7 @@ Enterprise-grade Canonical-Driven Development (CDD) enforcement for [Spec Kit](h
 - **4 AI Skills** — Enterprise-grade AI behavior protocols (not just step-lists)
 - **3 Bash Scripts** — JSON-output orchestration for AI consumption
 - **Workflow Chaining** — YAML handoffs enable guard → fix → review → score flows
-- **Spec Kit Hooks** — Mandatory quality gate after `/speckit.implement`
+- **Spec Kit Hooks** — Quality gate integrations at implement, tasks, and review phases
 - **Zero Dependencies** — Pure Node.js built-ins only
 
 ## Installation
@@ -40,16 +40,14 @@ docguard score
 
 ## Commands
 
-| Command | Purpose |
-|---------|---------|
-| `docguard.guard` | Run 19-validator quality gate with severity triage |
-| `docguard.fix` | AI-driven documentation repair with codebase research |
-| `docguard.review` | Cross-document semantic consistency analysis (read-only) |
-| `docguard.score` | CDD maturity score with ROI improvement roadmap |
-| `docguard.diagnose` | Diagnose issues + generate multi-perspective AI prompts |
-| `docguard.generate` | Reverse-engineer canonical docs from codebase |
-| `docguard.init` | Initialize CDD structure in a project |
-| `docguard.trace` | Generate requirements traceability matrix |
+| Command | Alias | Purpose |
+|---------|-------|---------|
+| `speckit.docguard.guard` | `docguard.guard` | Run 19-validator quality gate with severity triage |
+| `speckit.docguard.fix` | `docguard.fix` | AI-driven documentation repair with codebase research |
+| `speckit.docguard.review` | `docguard.review` | Cross-document semantic consistency analysis (read-only) |
+| `speckit.docguard.score` | `docguard.score` | CDD maturity score with ROI improvement roadmap |
+| `speckit.docguard.diagnose` | — | Diagnose issues + generate multi-perspective AI prompts |
+| `speckit.docguard.generate` | — | Reverse-engineer canonical docs from codebase |
 
 ## AI Skills
 
@@ -72,12 +70,12 @@ DocGuard integrates into the spec-kit workflow through hooks:
 
 ```yaml
 hooks:
-  after_implement:   # Mandatory — always runs after /speckit.implement
-    command: docguard.guard
+  after_implement:   # Optional — quality gate after /speckit.implement
+    command: speckit.docguard.guard
   before_tasks:      # Optional — review docs before task generation
-    command: docguard.review
+    command: speckit.docguard.review
   after_tasks:       # Optional — show score after tasks
-    command: docguard.score
+    command: speckit.docguard.score
 ```
 
 ### Workflow Chaining
