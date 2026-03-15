@@ -1,0 +1,12 @@
+{
+  "name": "express-api-example",
+  "version": "1.0.0",
+  "description": "A simple Express API — intentionally undocumented for DocGuard demo",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.0"
+  }
+}

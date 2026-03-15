@@ -1,0 +1,10 @@
+{
+  "name": "task-tracker",
+  "version": "1.0.0",
+  "description": "A spec-driven task tracker built with CDD practices",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test tests/"
+  }
+}

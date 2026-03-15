@@ -22,6 +22,8 @@
 - [Templates](#-templates)
 - [AI Agent Support](#-ai-agent-support)
 - [Slash Commands](#-slash-commands)
+- [Examples](#-examples)
+- [Testing](#-testing)
 - [CI/CD Integration](#%EF%B8%8F-cicd-integration)
 - [File Structure](#-file-structure)
 - [Configuration](#%EF%B8%8F-configuration)
@@ -43,6 +45,39 @@ DocGuard enforces **Canonical-Driven Development (CDD)** — a methodology where
 DocGuard is an official [GitHub Spec Kit](https://github.com/github/spec-kit) community extension. It validates the artifacts that Spec Kit creates, ensuring your specs stay high-quality throughout the development lifecycle.
 
 📖 **[Philosophy](PHILOSOPHY.md)** · 📋 **[CDD Standard](STANDARD.md)** · ⚖️ **[Comparisons](COMPARISONS.md)** · 🗺️ **[Roadmap](ROADMAP.md)**
+
+### Architecture
+
+```mermaid
+graph TD
+    CLI["CLI Entry<br/>docguard.mjs"] --> Commands["Commands (15)"]
+    Commands --> guard["guard"]
+    Commands --> generate["generate"]
+    Commands --> score["score"]
+    Commands --> diagnose["diagnose"]
+    Commands --> setup["setup wizard"]
+    Commands --> other["diff · init · fix · trace<br/>agents · hooks · badge · ci · watch"]
+
+    guard --> Validators["Validators (19)"]
+    generate --> Scanners["Scanners (4)<br/>routes · schemas · doc-tools · speckit"]
+    score --> Scoring["Weighted Scoring<br/>8 categories"]
+    diagnose --> Validators
+    diagnose --> AIPrompts["AI-Ready<br/>Fix Prompts"]
+
+    Validators --> Output["Output"]
+    Scanners --> Output
+    Scoring --> Output
+    Output --> Terminal["Terminal"]
+    Output --> JSON["JSON"]
+    Output --> Badge["Badge"]
+
+    style CLI fill:#2d5016,color:#fff
+    style Validators fill:#1a3a5c,color:#fff
+    style Scanners fill:#1a3a5c,color:#fff
+    style Output fill:#5c3a1a,color:#fff
+```
+
+> **Distribution**: Node.js core (npm) · Python wrapper (PyPI) · GitHub Action (`action.yml`) · Spec Kit Extension (ZIP)
 
 ---
 
@@ -332,6 +367,44 @@ For advanced users and CI/CD pipelines, DocGuard includes bash scripts with `--j
 | `docguard-check-docs.sh` | Discover project docs, return JSON inventory with metadata |
 | `docguard-suggest-fix.sh` | Run guard, parse results, output prioritized fixes |
 | `docguard-init-doc.sh` | Initialize canonical doc with metadata header |
+
+---
+
+## 📁 Examples
+
+Three real-world projects to see DocGuard in action:
+
+| Example | Scenario | What You'll See |
+|---------|----------|----------------|
+| [01-express-api](examples/01-express-api/) | Node.js API with **zero docs** | Cold-start: `generate` → instant coverage |
+| [02-python-flask](examples/02-python-flask/) | Python app with **drifted docs** | Drift detection: catch when docs lie |
+| [03-spec-kit-project](examples/03-spec-kit-project/) | Full CDD + Spec Kit | Gold standard: what maturity looks like |
+
+See [examples/README.md](examples/README.md) for step-by-step instructions.
+
+---
+
+## 🧪 Testing
+
+### Test Suite
+
+```bash
+npm test    # 33 tests across 18 describe blocks
+```
+
+Covers all 15 CLI commands, project type detection, compliance profiles, JSON output format, and help completeness.
+
+### CI Matrix
+
+| Node.js | OS | Status |
+|---------|-----|--------|
+| 18 | ubuntu-latest | ✅ |
+| 20 | ubuntu-latest | ✅ |
+| 22 | ubuntu-latest | ✅ |
+
+### Self-Validation (Dogfooding)
+
+DocGuard runs its own `guard`, `score`, `diff`, `diagnose`, and `badge` commands against itself in CI — ensuring the tool passes its own checks.
 
 ---
 

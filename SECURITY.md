@@ -4,15 +4,15 @@
 
 | Version | Supported |
 |---------|-----------|
-| 0.4.x   | ✅ Current |
-| < 0.4   | ❌ Not supported |
+| 0.9.x   | ✅ Current |
+| < 0.9   | ❌ Not supported |
 
 ## Reporting a Vulnerability
 
 If you discover a security vulnerability in DocGuard, please report it responsibly:
 
 1. **Do NOT** open a public GitHub issue for security vulnerabilities
-2. **Email** the maintainers directly (see repository contact info)
+2. **Report via** [GitHub Security Advisories](https://github.com/raccioly/docguard/security/advisories/new) (private, preferred)
 3. Include:
    - Description of the vulnerability
    - Steps to reproduce
