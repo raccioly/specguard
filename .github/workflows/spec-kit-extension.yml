@@ -19,7 +19,7 @@ jobs:
 
       - name: Sync version in extension.yml
         run: |
-          sed -i "s/version: \".*\"/version: \"${GITHUB_REF_NAME#v}\"/" extensions/spec-kit-docguard/extension.yml
+          sed -i 's/^  version: ".*"/  version: "'"${GITHUB_REF_NAME#v}"'"/' extensions/spec-kit-docguard/extension.yml
           echo "Updated extension.yml to version ${GITHUB_REF_NAME#v}"
           grep 'version:' extensions/spec-kit-docguard/extension.yml
 
