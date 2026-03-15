@@ -40,6 +40,7 @@ export function validateMetadataSync(projectDir, config) {
   const vParts = currentVersion.split('.');
   const major = parseInt(vParts[0], 10);
   const minor = parseInt(vParts[1], 10);
+  const patch = parseInt(vParts[2], 10);
 
   // ── Check 1: extension.yml version sync ──
   const extFiles = findExtensionYmls(projectDir);
@@ -101,9 +102,15 @@ export function validateMetadataSync(projectDir, config) {
         const fParts = foundVersion.split('.');
         const fMajor = parseInt(fParts[0], 10);
         const fMinor = parseInt(fParts[1], 10);
+        const fPatch = parseInt(fParts[2], 10);
 
-        // Only flag if same major but older minor (same package, stale ref)
-        if (fMajor === major && fMinor < minor && foundVersion !== currentVersion) {
+        // Only flag if same major but older version (same package, stale ref)
+        const isOlder = fMajor === major && (
+          fMinor < minor ||
+          (fMinor === minor && fPatch < patch)
+        );
+
+        if (isOlder && foundVersion !== currentVersion) {
           total++;
           warnings.push(
             `${relPath} references "v${foundVersion}" in an actionable context (URL/install/declaration) but current version is "${currentVersion}"`
