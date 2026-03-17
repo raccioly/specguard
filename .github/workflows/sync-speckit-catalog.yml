@@ -1,0 +1,180 @@
+name: Sync DocGuard to Spec Kit Community Catalog
+
+# Triggers after the release workflow completes, or manually
+on:
+  workflow_run:
+    workflows: ["Auto Release — Tag, GitHub Release, npm, PyPI"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Override version (leave empty to read from package.json)'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  sync-catalog:
+    runs-on: ubuntu-latest
+    # Only run if the release workflow succeeded (or manual trigger)
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Checkout docguard repo
+        uses: actions/checkout@v4
+
+      - name: Get version and metadata
+        id: meta
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION=$(node -p "require('./package.json').version")
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "download_url=https://github.com/raccioly/docguard/releases/download/v${VERSION}/spec-kit-docguard-v${VERSION}.zip" >> "$GITHUB_OUTPUT"
+          echo "updated_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+
+          # Extract description from extension.yml (strip quotes)
+          DESC=$(grep 'description:' extensions/spec-kit-docguard/extension.yml | head -1 | sed 's/.*description: *"//' | sed 's/"$//')
+          echo "description=$DESC" >> "$GITHUB_OUTPUT"
+
+          # Count commands and hooks from extension.yml
+          COMMANDS=$(grep -c '\.md$' extensions/spec-kit-docguard/commands/*.md 2>/dev/null || echo "6")
+          echo "commands=$COMMANDS" >> "$GITHUB_OUTPUT"
+
+          echo "✅ Version: $VERSION"
+          echo "   Download: https://github.com/raccioly/docguard/releases/download/v${VERSION}/spec-kit-docguard-v${VERSION}.zip"
+
+      - name: Extract release notes from CHANGELOG
+        id: notes
+        run: |
+          VERSION="${{ steps.meta.outputs.version }}"
+          NOTES=$(awk "/^## \\[${VERSION}\\]/{found=1; next} /^## \\[/{if(found) exit} found{print}" CHANGELOG.md)
+          if [ -z "$NOTES" ]; then
+            NOTES="Updated to v${VERSION}. See [CHANGELOG](https://github.com/raccioly/docguard/blob/main/CHANGELOG.md) for details."
+          fi
+          # Write to file (avoids multiline env var issues)
+          echo "$NOTES" > /tmp/changelog-section.md
+          echo "✅ Release notes extracted ($(wc -l < /tmp/changelog-section.md) lines)"
+
+      - name: Checkout spec-kit fork
+        uses: actions/checkout@v4
+        with:
+          repository: raccioly/spec-kit
+          token: ${{ secrets.SPECKIT_PR_TOKEN }}
+          path: spec-kit-fork
+          fetch-depth: 1
+
+      - name: Sync fork with upstream
+        working-directory: spec-kit-fork
+        env:
+          GH_TOKEN: ${{ secrets.SPECKIT_PR_TOKEN }}
+        run: |
+          git remote add upstream https://github.com/github/spec-kit.git 2>/dev/null || true
+          git fetch upstream main
+          git checkout main
+          git merge upstream/main --no-edit
+          git push origin main
+
+      - name: Update catalog.community.json
+        working-directory: spec-kit-fork
+        run: |
+          VERSION="${{ steps.meta.outputs.version }}"
+          DOWNLOAD_URL="${{ steps.meta.outputs.download_url }}"
+          UPDATED_AT="${{ steps.meta.outputs.updated_at }}"
+
+          # Use node for reliable JSON manipulation
+          node -e "
+            const fs = require('fs');
+            const catalog = JSON.parse(fs.readFileSync('extensions/catalog.community.json', 'utf-8'));
+
+            if (!catalog.docguard) {
+              console.error('❌ DocGuard entry not found in catalog.community.json');
+              process.exit(1);
+            }
+
+            catalog.docguard.version = '$VERSION';
+            catalog.docguard.download_url = '$DOWNLOAD_URL';
+            catalog.docguard.updated_at = '$UPDATED_AT';
+
+            fs.writeFileSync(
+              'extensions/catalog.community.json',
+              JSON.stringify(catalog, null, 2) + '\n',
+              'utf-8'
+            );
+            console.log('✅ Updated catalog.community.json → v$VERSION');
+          "
+
+      - name: Create or update branch
+        working-directory: spec-kit-fork
+        run: |
+          BRANCH="update-docguard"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Always use the same branch name (so PRs get updated, not duplicated)
+          git checkout -B "$BRANCH"
+          git add extensions/catalog.community.json
+          git commit -m "chore: update DocGuard extension to v${{ steps.meta.outputs.version }}" || echo "No changes to commit"
+          git push --force origin "$BRANCH"
+          echo "✅ Branch $BRANCH pushed"
+
+      - name: Create or update PR
+        working-directory: spec-kit-fork
+        env:
+          GH_TOKEN: ${{ secrets.SPECKIT_PR_TOKEN }}
+        run: |
+          VERSION="${{ steps.meta.outputs.version }}"
+          BRANCH="update-docguard"
+
+          # Build PR body
+          cat > /tmp/pr-body.md << 'HEADER'
+          ## DocGuard Community Extension Update
+
+          Updates the DocGuard community extension catalog entry.
+
+          ### Changes
+          HEADER
+
+          echo "- Version: **v${VERSION}**" >> /tmp/pr-body.md
+          echo "- Download: \`spec-kit-docguard-v${VERSION}.zip\`" >> /tmp/pr-body.md
+          echo "- Repository: https://github.com/raccioly/docguard" >> /tmp/pr-body.md
+          echo "" >> /tmp/pr-body.md
+          echo "### Release Notes" >> /tmp/pr-body.md
+          echo "" >> /tmp/pr-body.md
+          cat /tmp/changelog-section.md >> /tmp/pr-body.md
+          echo "" >> /tmp/pr-body.md
+          echo "---" >> /tmp/pr-body.md
+          echo "*This PR was automatically generated by the DocGuard release pipeline.*" >> /tmp/pr-body.md
+
+          # Check if an open PR from this branch already exists
+          EXISTING_PR=$(gh pr list \
+            --repo github/spec-kit \
+            --head "raccioly:${BRANCH}" \
+            --state open \
+            --json number \
+            --jq '.[0].number' 2>/dev/null || echo "")
+
+          if [ -n "$EXISTING_PR" ] && [ "$EXISTING_PR" != "null" ]; then
+            # Update existing PR title and body
+            gh pr edit "$EXISTING_PR" \
+              --repo github/spec-kit \
+              --title "chore: update DocGuard extension to v${VERSION}" \
+              --body-file /tmp/pr-body.md
+            echo "✅ Updated existing PR #${EXISTING_PR}"
+            echo "   https://github.com/github/spec-kit/pull/${EXISTING_PR}"
+          else
+            # Create new PR
+            gh pr create \
+              --repo github/spec-kit \
+              --head "raccioly:${BRANCH}" \
+              --base main \
+              --title "chore: update DocGuard extension to v${VERSION}" \
+              --body-file /tmp/pr-body.md
+            echo "✅ Created new PR"
+          fi
