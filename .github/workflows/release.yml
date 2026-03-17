@@ -1,15 +1,48 @@
-name: Publish to npm + PyPI
+name: Auto Release — Tag, GitHub Release, npm, PyPI
 
+# Triggers on push to main — detects version bumps automatically
 on:
-  release:
-    types: [published]
+  push:
+    branches: [main]
+    paths:
+      - 'package.json' # Only run when package.json changes (version bump)
 
 permissions:
-  contents: read
+  contents: write # Needed to create tags and releases
 
 jobs:
-  # ── Run tests first ──
+  # ── Step 1: Detect if version changed ──────────────────────────────────
+  detect-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+      changed: ${{ steps.check.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2 # Need previous commit to compare
+
+      - name: Check if version changed
+        id: check
+        run: |
+          CURRENT=$(node -p "require('./package.json').version")
+          # Get version from previous commit
+          PREVIOUS=$(git show HEAD~1:package.json 2>/dev/null | node -p "JSON.parse(require('fs').readFileSync('/dev/stdin','utf-8')).version" 2>/dev/null || echo "0.0.0")
+          echo "current=$CURRENT"
+          echo "previous=$PREVIOUS"
+          if [ "$CURRENT" != "$PREVIOUS" ]; then
+            echo "version=$CURRENT" >> "$GITHUB_OUTPUT"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "✅ Version changed: $PREVIOUS → $CURRENT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "⏭️ Version unchanged ($CURRENT), skipping release"
+          fi
+
+  # ── Step 2: Run full test suite ────────────────────────────────────────
   test:
+    needs: detect-version
+    if: needs.detect-version.outputs.changed == 'true'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -26,9 +59,88 @@ jobs:
       - name: Guard (self-check)
         run: node cli/docguard.mjs guard || [ $? -eq 2 ]
 
-  # ── Publish to npm ──
+  # ── Step 3: Create git tag + GitHub Release ────────────────────────────
+  create-release:
+    needs: [detect-version, test]
+    if: needs.detect-version.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      tag: v${{ needs.detect-version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create and push tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ needs.detect-version.outputs.version }}"
+          TAG="v${VERSION}"
+
+          # Check if tag already exists
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists, skipping"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
+          echo "✅ Tag $TAG created and pushed"
+
+      - name: Generate release notes from CHANGELOG
+        id: notes
+        run: |
+          VERSION="${{ needs.detect-version.outputs.version }}"
+          # Extract the section for this version from CHANGELOG.md
+          # Matches from ## [X.X.X] until the next ## [
+          NOTES=$(awk "/^## \\[${VERSION}\\]/{found=1; next} /^## \\[/{if(found) exit} found{print}" CHANGELOG.md)
+          if [ -z "$NOTES" ]; then
+            NOTES="Release v${VERSION} — see CHANGELOG.md for details."
+          fi
+          # Write to file to avoid escaping issues
+          echo "$NOTES" > /tmp/release-notes.md
+          echo "✅ Release notes extracted"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ needs.detect-version.outputs.version }}"
+          TAG="v${VERSION}"
+          gh release create "$TAG" \
+            --title "DocGuard $TAG" \
+            --notes-file /tmp/release-notes.md \
+            --latest
+
+  # ── Step 4: Build and attach spec-kit extension ZIP ────────────────────
+  build-extension:
+    needs: [detect-version, create-release]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build extension ZIP
+        run: |
+          VERSION="${{ needs.detect-version.outputs.version }}"
+          cd extensions/spec-kit-docguard
+          zip -r "../../spec-kit-docguard-v${VERSION}.zip" . -x ".*"
+          cd ../..
+          echo "--- ZIP contents ---"
+          unzip -l "spec-kit-docguard-v${VERSION}.zip"
+
+      - name: Upload to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ needs.detect-version.outputs.version }}"
+          gh release upload "v${VERSION}" \
+            "spec-kit-docguard-v${VERSION}.zip" \
+            --clobber
+
+  # ── Step 5: Publish to npm ─────────────────────────────────────────────
   publish-npm:
-    needs: test
+    needs: [detect-version, test, create-release]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -37,20 +149,14 @@ jobs:
           node-version: 20
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Sync version from tag
-        run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          npm version "$VERSION" --no-git-tag-version --allow-same-version
-          echo "Publishing version $VERSION"
-
       - name: Publish
         run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-  # ── Publish to PyPI ──
+  # ── Step 6: Publish to PyPI ────────────────────────────────────────────
   publish-pypi:
-    needs: test
+    needs: [detect-version, test, create-release]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -58,9 +164,9 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Sync version from tag
+      - name: Sync version in pyproject.toml
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${{ needs.detect-version.outputs.version }}"
           sed -i "s/^version = \".*\"/version = \"$VERSION\"/" pyproject.toml
           echo "Publishing version $VERSION"
           grep 'version' pyproject.toml
