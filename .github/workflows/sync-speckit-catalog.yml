@@ -136,7 +136,8 @@ jobs:
           # Check if an open PR from this branch already exists
           EXISTING_PR=$(gh pr list \
             --repo github/spec-kit \
-            --head "raccioly:${BRANCH}" \
+            --author raccioly \
+            --search "update DocGuard extension" \
             --state open \
             --json number \
             --jq '.[0].number' 2>/dev/null || echo "")
@@ -150,12 +151,13 @@ jobs:
             echo "✅ Updated existing PR #${EXISTING_PR}"
             echo "   https://github.com/github/spec-kit/pull/${EXISTING_PR}"
           else
-            # Create new PR
+            # Create new PR (or handle if one already exists)
             gh pr create \
               --repo github/spec-kit \
               --head "raccioly:${BRANCH}" \
               --base main \
               --title "chore: update DocGuard extension to v${VERSION}" \
-              --body-file /tmp/pr-body.md
-            echo "✅ Created new PR"
+              --body-file /tmp/pr-body.md \
+            && echo "✅ Created new PR" \
+            || echo "⚠️ PR may already exist — check https://github.com/github/spec-kit/pulls?q=author%3Araccioly"
           fi
