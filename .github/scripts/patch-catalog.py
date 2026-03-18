@@ -83,3 +83,22 @@ print(f"   updated_at: {old_entry_updated} → {updated_at}")
 print(f"   top-level updated_at: {top_updated} → {updated_at}")
 if old_desc != new_desc:
     print(f"   description: updated to match constitution")
+
+# --- Also patch extensions/README.md (table row description) ---
+README_FILE = "extensions/README.md"
+try:
+    with open(README_FILE, "r") as f:
+        readme = f.read()
+
+    # The DocGuard row in the README table looks like:
+    # | DocGuard — CDD Enforcement | <description> | [spec-kit-docguard](...) |
+    # Only update if the old description is present
+    if old_desc in readme and old_desc != new_desc:
+        readme = readme.replace(old_desc, new_desc)
+        with open(README_FILE, "w") as f:
+            f.write(readme)
+        print(f"✅ Updated extensions/README.md — description synced")
+    else:
+        print(f"ℹ️  extensions/README.md already up to date")
+except FileNotFoundError:
+    print(f"⚠️  {README_FILE} not found — skipping README update")

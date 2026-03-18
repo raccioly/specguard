@@ -100,7 +100,7 @@ jobs:
 
           # Always use the same branch name (so PRs get updated, not duplicated)
           git checkout -B "$BRANCH"
-          git add extensions/catalog.community.json
+          git add extensions/catalog.community.json extensions/README.md
           git commit -m "chore: update DocGuard extension to v${{ steps.meta.outputs.version }}" || echo "No changes to commit"
           git push --force origin "$BRANCH"
           echo "✅ Branch $BRANCH pushed"
