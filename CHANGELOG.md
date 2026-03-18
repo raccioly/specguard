@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Unified Ignore System & Scorer Alignment
+- **`cli/shared-ignore.mjs`** — New shared ignore utility with `buildIgnoreFilter()` and `shouldIgnore()`. All validators now share consistent glob matching for `config.ignore`, `securityIgnore`, and `todoIgnore`.
+- **`testPatterns` config** — New array field in `.docguard.json` for multiple test location patterns. Backward-compatible: `testPattern` (string) auto-normalizes to `testPatterns` (array).
+- **7 new tests** — Shared ignore utility (4 unit tests), securityIgnore integration (1), placeholder exclusions (1), testPatterns config (1). Total tests: 40.
+
+### Fixed
+- **`securityIgnore` globs now functional** — Security validator reads and applies `securityIgnore` patterns from `.docguard.json`. Previously, all ignore config was silently discarded. (Bug #1)
+- **`todoIgnore` globs now functional** — TODO-tracking validator reads and applies `todoIgnore` patterns. (Bug #2)
+- **Docs-Diff no longer scans `node_modules`** — Test file discovery uses `testPatterns` config and shared ignore filter instead of unchecked recursive walk. (Bug #3)
+- **Testing score reflects co-located tests** — `calcTestingScore()` now detects `__tests__/` under `backend/`, `server/`, `packages/` in addition to `src/`. Also checks `testPatterns` config. (Bug #4 & #5)
+- **Security score aligns with guard** — `calcSecurityScore()` now runs `validateSecurity()` inline and deducts points for findings. 100% security score is no longer possible when guard reports secret detections. (Bug #6)
+- **Placeholder/example values not flagged** — Security scanner skips AWS example keys (`AKIAIOSFODNN7EXAMPLE`), HTML `placeholder=` attributes, OpenAPI `example:` blocks, and `password123` test fixtures. (Bug #7)
+- **ROADMAP.md matching improved** — TODO-tracking now matches full text + file location context instead of a 30-char substring. (Bug #8)
+- **Architecture respects `ignore` array** — Architecture validator filters files through `config.ignore` before building import graph. (Bug #9)
+
+### Changed
+- **Constitution v1.0.0 → v1.1.0** — Principle IV updated: validators MAY import shared utility modules for infrastructure (file walking, ignore filtering). Commands MAY compose validator results.
+- **Security scoring weights** — Redistributed from 30/20/20/15/15 to 25/15/15/10/10/25 (25 pts now from actual secret scanning).
+- **Testing suggestion** — Context-aware: suggests `testPatterns` config instead of "Add tests/ directory" when co-located tests exist.
+- **`findColocatedTests()`** — Source roots expanded: `backend/`, `server/` added alongside `src/`, `app/`, `lib/`, `packages/`, `modules/`.
+
 ## [0.9.9] - 2026-03-17
 
 ### Added — Extension-First Architecture & Spec-Kit Integration Gate

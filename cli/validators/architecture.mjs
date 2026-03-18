@@ -10,10 +10,14 @@
  * - Circular dependencies (A → B → A)
  * - Layer boundary violations (routes importing from routes, etc.)
  * - Orphan modules (code files with 0 inbound imports)
+ *
+ * Respects config.ignore (global) for file filtering.
+ * Uses shared-ignore.mjs for consistent filtering (Constitution IV, v1.1.0).
  */
 
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { resolve, join, extname, relative, dirname, basename } from 'node:path';
+import { shouldIgnore } from '../shared-ignore.mjs';
 
 const IGNORE_DIRS = new Set([
   'node_modules', '.git', '.next', 'dist', 'build',
@@ -33,7 +37,7 @@ export function validateArchitecture(projectDir, config) {
   }
 
   // ── 2. Auto-detect import graph ──
-  const importGraph = buildImportGraph(projectDir);
+  const importGraph = buildImportGraph(projectDir, config);
   if (importGraph.files.length === 0) return results;
 
   // ── 3. Detect circular dependencies ──
@@ -84,7 +88,7 @@ function validateConfigLayers(projectDir, config, layers, results) {
     const layerDir = resolve(projectDir, dir);
     if (!existsSync(layerDir)) continue;
 
-    const files = getFilesRecursive(layerDir);
+    const files = getFilesRecursive(layerDir, config, projectDir);
     for (const file of files) {
       if (!CODE_EXTENSIONS.has(extname(file))) continue;
 
@@ -110,14 +114,18 @@ function validateConfigLayers(projectDir, config, layers, results) {
 
 // ── Import Graph Builder ────────────────────────────────────────────────────
 
-function buildImportGraph(projectDir) {
+function buildImportGraph(projectDir, config) {
   const graph = { files: [], edges: [], fileMap: new Map() };
 
-  const allFiles = getFilesRecursive(projectDir);
+  const allFiles = getFilesRecursive(projectDir, config, projectDir);
   const codeFiles = allFiles.filter(f => CODE_EXTENSIONS.has(extname(f)));
 
   for (const file of codeFiles) {
     const relPath = relative(projectDir, file);
+
+    // Skip files in ignored directories (config.ignore)
+    if (config && shouldIgnore(relPath, config)) continue;
+
     graph.files.push(relPath);
 
     try {
@@ -355,7 +363,7 @@ function getFileLayer(filePath, layerDirMap) {
 
 // ── Utilities ───────────────────────────────────────────────────────────────
 
-function getFilesRecursive(dir) {
+function getFilesRecursive(dir, config, projectDir) {
   const results = [];
   if (!existsSync(dir)) return results;
 
@@ -366,11 +374,18 @@ function getFilesRecursive(dir) {
 
   for (const entry of entries) {
     if (IGNORE_DIRS.has(entry) || entry.startsWith('.')) continue;
+
+    // Check config.ignore for this directory
+    if (config && projectDir) {
+      const relPath = relative(projectDir, join(dir, entry));
+      if (shouldIgnore(relPath, config)) continue;
+    }
+
     const fullPath = join(dir, entry);
     try {
       const stat = statSync(fullPath);
       if (stat.isDirectory()) {
-        results.push(...getFilesRecursive(fullPath));
+        results.push(...getFilesRecursive(fullPath, config, projectDir));
       } else {
         results.push(fullPath);
       }

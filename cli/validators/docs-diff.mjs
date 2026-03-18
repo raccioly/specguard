@@ -4,10 +4,14 @@
  * Runs as part of `docguard guard` on every invocation.
  * Detects undocumented code artifacts and documented items not found in code.
  * Returns warnings (not errors) since drift is a soft signal.
+ *
+ * Respects config.ignore and config.testPatterns for test file discovery.
+ * Uses shared-ignore.mjs for consistent filtering (Constitution IV, v1.1.0).
  */
 
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
-import { resolve, join, extname, basename } from 'node:path';
+import { resolve, join, extname, basename, relative } from 'node:path';
+import { shouldIgnore, buildIgnoreFilter } from '../shared-ignore.mjs';
 
 const IGNORE_DIRS = new Set([
   'node_modules', '.git', '.next', 'dist', 'build',
@@ -32,7 +36,7 @@ export function validateDocsDiff(projectDir, config) {
   const checks = [
     diffTechStack(projectDir),
     diffEnvVars(projectDir),
-    diffTests(projectDir),
+    diffTests(projectDir, config),
   ];
 
   for (const result of checks) {
@@ -131,7 +135,13 @@ function diffEnvVars(dir) {
   };
 }
 
-function diffTests(dir) {
+/**
+ * Diff test files between TEST-SPEC.md and actual code.
+ * Uses config.testPatterns if available, otherwise falls back to
+ * scanning standard test directories.
+ * Always ignores node_modules via shared ignore filter.
+ */
+function diffTests(dir, config) {
   const testSpecPath = resolve(dir, 'docs-canonical/TEST-SPEC.md');
   if (!existsSync(testSpecPath)) return null;
 
@@ -144,13 +154,30 @@ function diffTests(dir) {
   }
 
   const codeTests = new Set();
-  const testDirs = ['tests', 'test', '__tests__', 'spec', 'e2e'];
-  for (const td of testDirs) {
-    const testDir = resolve(dir, td);
-    if (!existsSync(testDir)) continue;
-    const files = getFilesRecursive(testDir);
-    for (const f of files) {
-      codeTests.add(f.replace(dir + '/', ''));
+
+  // Use testPatterns from config if available
+  const testPatterns = config?.testPatterns || [];
+  if (testPatterns.length > 0) {
+    // Use configured patterns to find test files
+    const patternFilter = buildIgnoreFilter(testPatterns.map(p => {
+      // Invert the pattern: we WANT files matching these patterns
+      return p;
+    }));
+    // Walk the project and collect matching test files
+    const allTestFiles = getTestFilesFromPatterns(dir, testPatterns, config);
+    for (const f of allTestFiles) {
+      codeTests.add(f);
+    }
+  } else {
+    // Fall back to standard test directories
+    const testDirs = ['tests', 'test', '__tests__', 'spec', 'e2e'];
+    for (const td of testDirs) {
+      const testDir = resolve(dir, td);
+      if (!existsSync(testDir)) continue;
+      const files = getFilesRecursive(testDir, config);
+      for (const f of files) {
+        codeTests.add(f.replace(dir + '/', ''));
+      }
     }
   }
 
@@ -163,7 +190,47 @@ function diffTests(dir) {
   };
 }
 
-function getFilesRecursive(dir) {
+/**
+ * Find test files matching configured testPatterns.
+ * Walks the project tree, skipping node_modules and ignored dirs.
+ */
+function getTestFilesFromPatterns(dir, patterns, config) {
+  const results = [];
+  const testFileRegex = /\.(test|spec)\.(mjs|cjs|[jt]sx?)$/;
+
+  function walk(currentDir) {
+    let entries;
+    try { entries = readdirSync(currentDir); } catch { return; }
+
+    for (const entry of entries) {
+      if (IGNORE_DIRS.has(entry) || entry.startsWith('.')) continue;
+      const fullPath = join(currentDir, entry);
+      try {
+        const stat = statSync(fullPath);
+        if (stat.isDirectory()) {
+          walk(fullPath);
+        } else if (stat.isFile()) {
+          const relPath = relative(dir, fullPath);
+          // Skip files in ignored paths
+          if (config && shouldIgnore(relPath, config)) continue;
+          // Check if it matches test file naming patterns
+          if (testFileRegex.test(entry) || /__(tests|test)__/.test(relPath)) {
+            // Check if it matches any of the configured test patterns
+            const patternFilter = buildIgnoreFilter(patterns);
+            if (patternFilter(relPath)) {
+              results.push(relPath);
+            }
+          }
+        }
+      } catch { /* skip */ }
+    }
+  }
+
+  walk(dir);
+  return results;
+}
+
+function getFilesRecursive(dir, config) {
   const results = [];
   if (!existsSync(dir)) return results;
   let entries;
@@ -175,7 +242,7 @@ function getFilesRecursive(dir) {
     try {
       const stat = statSync(fullPath);
       if (stat.isDirectory()) {
-        results.push(...getFilesRecursive(fullPath));
+        results.push(...getFilesRecursive(fullPath, config));
       } else if (stat.isFile() && CODE_EXTENSIONS.has(extname(fullPath))) {
         results.push(fullPath);
       }

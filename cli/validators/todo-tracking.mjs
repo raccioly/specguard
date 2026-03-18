@@ -6,6 +6,9 @@
  *
  * Also detects skipped tests without explanation.
  *
+ * Respects config.todoIgnore (glob patterns) and config.ignore (global).
+ * Uses shared-ignore.mjs for consistent filtering (Constitution IV, v1.1.0).
+ *
  * Inspired by spec-kit-cleanup (github.com/dsrednicki/spec-kit-cleanup)
  * which uses tiered issue classification for code hygiene.
  *
@@ -14,6 +17,7 @@
 
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { resolve, join, relative, extname } from 'node:path';
+import { shouldIgnore } from '../shared-ignore.mjs';
 
 const IGNORE_DIRS = new Set([
   'node_modules', '.git', '.next', 'dist', 'build', 'coverage',
@@ -78,14 +82,14 @@ export function validateTodoTracking(projectDir, config) {
 /**
  * Scan test files for skip/todo patterns without adjacent explanation comments.
  */
-function checkSkippedTests(projectDir) {
+function checkSkippedTests(projectDir, config) {
   const errors = [];
   const warnings = [];
   let passed = 0;
   let total = 0;
 
   const testFiles = [];
-  findTestFiles(projectDir, projectDir, testFiles);
+  findTestFiles(projectDir, projectDir, testFiles, config);
 
   if (testFiles.length === 0) return { errors, warnings, passed, total };
 
@@ -161,7 +165,7 @@ function checkUntrackedTodos(projectDir, config) {
 
   // Collect all TODO/FIXME items from source
   const todos = [];
-  findTodos(projectDir, projectDir, todos);
+  findTodos(projectDir, projectDir, todos, config);
 
   if (todos.length === 0) {
     // No TODOs found — that's clean code
@@ -177,11 +181,26 @@ function checkUntrackedTodos(projectDir, config) {
   let untrackedCount = 0;
 
   for (const todo of todos) {
-    // Check if the TODO text appears somewhere in tracking docs
-    const isTracked = trackingContent.some(doc =>
-      doc.content.includes(todo.keyword) ||
-      doc.content.toLowerCase().includes(todo.text.toLowerCase().trim().substring(0, 30))
-    );
+    // Check if the TODO is tracked in documentation
+    // Improved matching: check full text AND file location context
+    const isTracked = trackingContent.some(doc => {
+      const content = doc.content;
+      const contentLower = content.toLowerCase();
+      const todoTextLower = todo.text.toLowerCase().trim();
+
+      // Match 1: Full TODO text appears in the doc (at least 20 chars or full text)
+      const searchText = todoTextLower.length > 20
+        ? todoTextLower.substring(0, 40)
+        : todoTextLower;
+      const hasText = contentLower.includes(searchText);
+
+      // Match 2: File location appears nearby in the doc
+      const hasLocation = content.includes(todo.file) ||
+        content.includes(`${todo.file}:${todo.line}`);
+
+      // Either the full text matches, or the file location is referenced with partial text
+      return (hasText && hasLocation) || (hasText && todoTextLower.length > 30);
+    });
 
     if (!isTracked) {
       untrackedCount++;
@@ -231,7 +250,7 @@ function loadTrackingDocs(projectDir, config) {
 
 // ──── File Scanners ────────────────────────────────────────────────────────
 
-function findTestFiles(rootDir, dir, files) {
+function findTestFiles(rootDir, dir, files, config) {
   let entries;
   try { entries = readdirSync(dir); } catch { return; }
 
@@ -244,7 +263,7 @@ function findTestFiles(rootDir, dir, files) {
     try { stat = statSync(full); } catch { continue; }
 
     if (stat.isDirectory()) {
-      findTestFiles(rootDir, full, files);
+      findTestFiles(rootDir, full, files, config);
     } else {
       const ext = extname(entry).toLowerCase();
       if (!TEST_EXTENSIONS.has(ext)) continue;
@@ -252,13 +271,16 @@ function findTestFiles(rootDir, dir, files) {
       // Match test file patterns
       if (/\.(test|spec)\.(mjs|cjs|[jt]sx?)$/.test(entry) ||
           /__(tests|test)__/.test(relative(rootDir, full))) {
-        files.push(relative(rootDir, full));
+        const relPath = relative(rootDir, full);
+        // Apply config ignore patterns (todoIgnore + global ignore)
+        if (config && shouldIgnore(relPath, config, 'todoIgnore')) continue;
+        files.push(relPath);
       }
     }
   }
 }
 
-function findTodos(rootDir, dir, todos) {
+function findTodos(rootDir, dir, todos, config) {
   let entries;
   try { entries = readdirSync(dir); } catch { return; }
 
@@ -271,16 +293,20 @@ function findTodos(rootDir, dir, todos) {
     try { stat = statSync(full); } catch { continue; }
 
     if (stat.isDirectory()) {
-      findTodos(rootDir, full, todos);
+      findTodos(rootDir, full, todos, config);
     } else {
       const ext = extname(entry).toLowerCase();
       if (!SOURCE_EXTENSIONS.has(ext)) continue;
+
+      const relPath = relative(rootDir, full);
+
+      // Apply config ignore patterns (todoIgnore + global ignore)
+      if (config && shouldIgnore(relPath, config, 'todoIgnore')) continue;
 
       let content;
       try { content = readFileSync(full, 'utf-8'); } catch { continue; }
 
       const lines = content.split('\n');
-      const relPath = relative(rootDir, full);
 
       for (let i = 0; i < lines.length; i++) {
         if (TODO_PATTERN.test(lines[i])) {
