@@ -85,27 +85,11 @@ jobs:
           DOWNLOAD_URL="${{ steps.meta.outputs.download_url }}"
           UPDATED_AT="${{ steps.meta.outputs.updated_at }}"
 
-          # Use node for reliable JSON manipulation
-          node -e "
-            const fs = require('fs');
-            const catalog = JSON.parse(fs.readFileSync('extensions/catalog.community.json', 'utf-8'));
-
-            if (!catalog.extensions || !catalog.extensions.docguard) {
-              console.error('❌ DocGuard entry not found in catalog.extensions');
-              process.exit(1);
-            }
-
-            catalog.extensions.docguard.version = '$VERSION';
-            catalog.extensions.docguard.download_url = '$DOWNLOAD_URL';
-            catalog.extensions.docguard.updated_at = '$UPDATED_AT';
-
-            fs.writeFileSync(
-              'extensions/catalog.community.json',
-              JSON.stringify(catalog, null, 2) + '\n',
-              'utf-8'
-            );
-            console.log('✅ Updated catalog.community.json → v$VERSION');
-          "
+          # Surgical updates using external script — no full-file re-serialization
+          # Prevents noisy diffs on unrelated extensions (unicode escapes, formatting)
+          # Also bumps top-level updated_at and fixes description wording
+          cp ${{ github.workspace }}/.github/scripts/patch-catalog.py /tmp/patch-catalog.py
+          python3 /tmp/patch-catalog.py "$VERSION" "$DOWNLOAD_URL" "$UPDATED_AT"
 
       - name: Create or update branch
         working-directory: spec-kit-fork
