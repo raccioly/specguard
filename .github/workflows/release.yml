@@ -2,6 +2,7 @@ name: Auto Release — Tag, GitHub Release, npm, PyPI
 
 # Triggers on push to main — detects version bumps automatically
 on:
+  workflow_dispatch: # Allow manual trigger for recovery
   push:
     branches: [main]
     paths:
