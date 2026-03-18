@@ -1,9 +1,13 @@
 /**
  * Security Validator — Basic checks for secrets in code
+ *
+ * Respects config.securityIgnore (glob patterns) and config.ignore (global).
+ * Uses shared-ignore.mjs for consistent filtering (Constitution IV, v1.1.0).
  */
 
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { resolve, join, extname } from 'node:path';
+import { shouldIgnore } from '../shared-ignore.mjs';
 
 const CODE_EXTENSIONS = new Set([
   '.js', '.mjs', '.cjs', '.ts', '.tsx', '.jsx',
@@ -26,6 +30,30 @@ const SECRET_PATTERNS = [
   { pattern: /(?:sk-|sk_live_|sk_test_)[a-zA-Z0-9]{20,}/g, label: 'API secret key (Stripe/OpenAI pattern)' },
 ];
 
+// Known-safe placeholder/example values that should never be flagged
+const SAFE_PATTERNS = [
+  /EXAMPLE/i,                           // AWS docs example keys contain "EXAMPLE"
+  /placeholder\s*=\s*["']/i,           // HTML placeholder attributes
+  /example\s*:/i,                       // OpenAPI example: blocks
+  /['"]password123['"]/,               // Common test fixture value
+  /\/\/\s*example/i,                    // Code comments with "example"
+  /<!--.*-->/,                          // HTML comments
+];
+
+/**
+ * Check if a match line is a known-safe placeholder/example.
+ * @param {string} line - The full source line containing the match
+ * @param {string} matchStr - The matched string
+ * @returns {boolean} - true if this is a safe/placeholder value
+ */
+function isSafePlaceholder(line, matchStr) {
+  // Check if the matched string itself contains "EXAMPLE"
+  if (/EXAMPLE/i.test(matchStr)) return true;
+
+  // Check if the source line matches any safe pattern
+  return SAFE_PATTERNS.some(p => p.test(line));
+}
+
 export function validateSecurity(projectDir, config) {
   const results = { name: 'security', errors: [], warnings: [], passed: 0, total: 0 };
 
@@ -40,13 +68,33 @@ export function validateSecurity(projectDir, config) {
     // Skip .env.example — it should have placeholder values
     if (filePath.endsWith('.env.example')) return;
 
-    const content = readFileSync(filePath, 'utf-8');
     const relPath = filePath.replace(projectDir + '/', '');
+
+    // Apply config ignore patterns (securityIgnore + global ignore)
+    if (shouldIgnore(relPath, config, 'securityIgnore')) return;
+
+    const content = readFileSync(filePath, 'utf-8');
+    const lines = content.split('\n');
 
     for (const { pattern, label } of SECRET_PATTERNS) {
       pattern.lastIndex = 0;
       const match = pattern.exec(content);
       if (match) {
+        // Find the line containing this match for context-aware filtering
+        const matchPos = match.index;
+        let charCount = 0;
+        let matchLine = '';
+        for (const line of lines) {
+          charCount += line.length + 1; // +1 for newline
+          if (charCount > matchPos) {
+            matchLine = line;
+            break;
+          }
+        }
+
+        // Skip known-safe placeholder/example values
+        if (isSafePlaceholder(matchLine, match[0])) continue;
+
         findings.push({ file: relPath, label, match: match[0].substring(0, 30) + '...' });
       }
     }

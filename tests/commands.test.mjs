@@ -6,7 +6,7 @@
 import { describe, it } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { execSync } from 'node:child_process';
-import { mkdtempSync, rmSync, existsSync, writeFileSync, readFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, rmSync, existsSync, writeFileSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -370,5 +370,131 @@ describe('help completeness v0.5', () => {
     const pkg = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf-8'));
     const output = run('--version');
     assert.ok(output.includes(pkg.version), `Expected version ${pkg.version} in output: ${output}`);
+  });
+});
+
+// ── New tests for v0.9.9 bug fixes ──────────────────────────────────────────
+
+describe('shared ignore utility', () => {
+  it('buildIgnoreFilter matches exact paths', async () => {
+    const { buildIgnoreFilter } = await import('../cli/shared-ignore.mjs');
+    const filter = buildIgnoreFilter(['src/foo.ts', 'backend/test.js']);
+    assert.ok(filter('src/foo.ts'), 'Should match exact path');
+    assert.ok(filter('backend/test.js'), 'Should match exact path');
+    assert.ok(!filter('src/bar.ts'), 'Should not match different file');
+  });
+
+  it('buildIgnoreFilter matches glob patterns', async () => {
+    const { buildIgnoreFilter } = await import('../cli/shared-ignore.mjs');
+    const filter = buildIgnoreFilter(['packages/cdk/**', 'backend/src/__tests__/**']);
+    assert.ok(filter('packages/cdk/lib/stacks/app-stack.ts'), 'Should match ** glob');
+    assert.ok(filter('backend/src/__tests__/schemaContracts.test.ts'), 'Should match ** glob');
+    assert.ok(!filter('backend/src/services/auth.ts'), 'Should not match non-test file');
+  });
+
+  it('shouldIgnore checks both global and validator-specific ignore', async () => {
+    const { shouldIgnore } = await import('../cli/shared-ignore.mjs');
+    const config = {
+      ignore: ['example_settlement'],
+      securityIgnore: ['backend/src/__tests__/**'],
+    };
+    assert.ok(shouldIgnore('example_settlement/foo.ts', config), 'Global ignore should work');
+    assert.ok(shouldIgnore('backend/src/__tests__/foo.test.ts', config, 'securityIgnore'), 'Validator-specific ignore should work');
+    assert.ok(!shouldIgnore('backend/src/services/auth.ts', config, 'securityIgnore'), 'Non-ignored file should pass');
+  });
+
+  it('empty patterns return false', async () => {
+    const { buildIgnoreFilter } = await import('../cli/shared-ignore.mjs');
+    const filter = buildIgnoreFilter([]);
+    assert.ok(!filter('any/file.ts'), 'Empty patterns should not match anything');
+  });
+});
+
+describe('securityIgnore config', () => {
+  it('security validator respects securityIgnore', () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'sg-sec-'));
+    try {
+      // Create a file with a fake secret
+      mkdirSync(join(tmpDir, 'src'), { recursive: true });
+      writeFileSync(join(tmpDir, 'src', 'config.ts'), 'const apiKey = "sk-live-abcdefghijklmnopqrstuvwxyz123456";');
+
+      // Create .docguard.json with securityIgnore
+      writeFileSync(join(tmpDir, '.docguard.json'), JSON.stringify({
+        profile: 'enterprise',
+        securityIgnore: ['src/config.ts'],
+        validators: { security: true },
+      }));
+
+      // Create minimal required files
+      writeFileSync(join(tmpDir, '.gitignore'), '.env\n');
+      mkdirSync(join(tmpDir, 'docs-canonical'), { recursive: true });
+      writeFileSync(join(tmpDir, 'docs-canonical', 'SECURITY.md'), '# Security\n## Authentication\n## Secrets Management\n');
+
+      let output;
+      try {
+        output = run(`guard --dir ${tmpDir} --format json`);
+      } catch (e) {
+        output = e.stdout || '';
+      }
+      const jsonStart = output.indexOf('{');
+      if (jsonStart >= 0) {
+        const json = JSON.parse(output.slice(jsonStart));
+        const secValidator = json.validators?.find(v => v.key === 'security');
+        if (secValidator) {
+          assert.equal(secValidator.errors.length, 0,
+            `securityIgnore should suppress findings, but got: ${JSON.stringify(secValidator.errors)}`);
+        }
+      }
+    } finally {
+      rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('placeholder exclusions', () => {
+  it('does not flag AWS example keys', () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'sg-placeholder-'));
+    try {
+      mkdirSync(join(tmpDir, 'src'), { recursive: true });
+      writeFileSync(join(tmpDir, 'src', 'form.tsx'),
+        'const placeholder = "AKIAIOSFODNN7EXAMPLE";\n');
+      writeFileSync(join(tmpDir, '.gitignore'), '.env\n');
+      writeFileSync(join(tmpDir, '.docguard.json'), JSON.stringify({
+        profile: 'enterprise',
+        validators: { security: true },
+      }));
+      mkdirSync(join(tmpDir, 'docs-canonical'), { recursive: true });
+      writeFileSync(join(tmpDir, 'docs-canonical', 'SECURITY.md'), '# Security\n## Authentication\n## Secrets Management\n');
+
+      let output;
+      try {
+        output = run(`guard --dir ${tmpDir} --format json`);
+      } catch (e) {
+        output = e.stdout || '';
+      }
+      const jsonStart = output.indexOf('{');
+      if (jsonStart >= 0) {
+        const json = JSON.parse(output.slice(jsonStart));
+        const secValidator = json.validators?.find(v => v.key === 'security');
+        if (secValidator) {
+          const awsFindings = secValidator.errors.filter(e => e.includes('AWS'));
+          assert.equal(awsFindings.length, 0,
+            `AKIAIOSFODNN7EXAMPLE should not be flagged, but got: ${JSON.stringify(awsFindings)}`);
+        }
+      }
+    } finally {
+      rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('testPatterns config', () => {
+  it('score recognizes testPatterns in config', () => {
+    const output = run('score --format json');
+    const jsonStart = output.indexOf('{');
+    const json = JSON.parse(output.slice(jsonStart));
+    // DocGuard has a tests/ dir so testing should get full marks
+    assert.ok(json.categories.testing.score >= 85,
+      `Testing score should be >= 85 (got ${json.categories.testing.score})`);
   });
 });

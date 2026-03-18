@@ -25,7 +25,7 @@ Canonical-Driven Development means documentation drives code, not the other way 
 
 ### IV. Validator Isolation
 
-Each of the 19 validators is a pure, self-contained function. Validators receive `projectDir` and `config`, then return results. No validator may import another validator or depend on command-level logic. This ensures adding or modifying validators never breaks existing ones.
+Each of the 19 validators is a pure, self-contained function. Validators receive `projectDir` and `config`, then return results. No validator may import another validator or depend on command-level logic. Validators MAY (and SHOULD) import shared utility modules (`shared.mjs`, `shared-ignore.mjs`) for cross-cutting infrastructure such as file walking, ignore filtering, and glob matching. Commands MAY compose results from multiple validators. This ensures adding or modifying validators never breaks existing ones while preventing duplicated infrastructure that drifts out of sync.
 
 ### V. AI as Author, CLI as Orchestrator
 
@@ -73,4 +73,4 @@ Versioning follows semantic versioning:
 - **MINOR**: New principle added or materially expanded guidance
 - **PATCH**: Clarification, wording, typo fix
 
-**Version**: 1.0.0 | **Ratified**: 2026-03-17 | **Last Amended**: 2026-03-17
+**Version**: 1.1.0 | **Ratified**: 2026-03-17 | **Last Amended**: 2026-03-17

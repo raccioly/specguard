@@ -128,6 +128,15 @@ export function loadConfig(projectDir) {
         ...getProjectTypeDefaults(merged.projectType),
         ...(merged.projectTypeConfig || {}),
       };
+      // Normalize testPattern (string) → testPatterns (array) for backward compat
+      if (merged.testPattern && !merged.testPatterns) {
+        merged.testPatterns = [merged.testPattern];
+      } else if (merged.testPattern && merged.testPatterns) {
+        // Both set — merge, deduplicate
+        if (!merged.testPatterns.includes(merged.testPattern)) {
+          merged.testPatterns.push(merged.testPattern);
+        }
+      }
       return merged;
     } catch (e) {
       console.error(`${c.red}Error parsing .docguard.json: ${e.message}${c.reset}`);

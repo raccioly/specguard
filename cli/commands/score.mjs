@@ -7,6 +7,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { resolve, join, extname } from 'node:path';
 import { execSync } from 'node:child_process';
 import { c } from '../shared.mjs';
+import { validateSecurity } from '../validators/security.mjs';
 
 const WEIGHTS = {
   structure: 25,     // Required files exist
@@ -410,15 +411,32 @@ function calcTestingScore(dir, config) {
   const testDirs = ['tests', 'test', '__tests__', 'spec', 'e2e'];
   const hasTopLevelTestDir = testDirs.some(d => existsSync(resolve(dir, d)));
 
-  // Check co-located tests: src/**/__tests__/ and src/**/*.test.* / src/**/*.spec.*
+  // Check co-located tests: **/__tests__/ and **/*.test.* / **/*.spec.*
+  // Scan ALL common source roots — not just src/, also backend/, packages/, etc.
   let hasColocatedTests = false;
   if (!hasTopLevelTestDir) {
     hasColocatedTests = findColocatedTests(dir);
   }
 
+  // Check if testPatterns config points to existing test locations
+  let hasPatternTests = false;
+  if (!hasTopLevelTestDir && !hasColocatedTests) {
+    const patterns = config.testPatterns || [];
+    if (patterns.length > 0) {
+      for (const pattern of patterns) {
+        // Extract the root directory from the pattern
+        const rootDir = pattern.split('/')[0].split('*')[0];
+        if (rootDir && existsSync(resolve(dir, rootDir))) {
+          hasPatternTests = true;
+          break;
+        }
+      }
+    }
+  }
+
   // Check vitest/jest config for custom test patterns
   let hasConfigTests = false;
-  if (!hasTopLevelTestDir && !hasColocatedTests) {
+  if (!hasTopLevelTestDir && !hasColocatedTests && !hasPatternTests) {
     const testConfigs = ['vitest.config.ts', 'vitest.config.js', 'vitest.config.mts', 'jest.config.ts', 'jest.config.js'];
     for (const cfgFile of testConfigs) {
       const cfgPath = resolve(dir, cfgFile);
@@ -448,7 +466,7 @@ function calcTestingScore(dir, config) {
     }
   }
 
-  if (hasTopLevelTestDir || hasColocatedTests || hasConfigTests) score += 40;
+  if (hasTopLevelTestDir || hasColocatedTests || hasPatternTests || hasConfigTests) score += 40;
 
   // ── Check 2: TEST-SPEC.md exists (30 pts) ──
   if (existsSync(resolve(dir, 'docs-canonical/TEST-SPEC.md'))) score += 30;
@@ -490,7 +508,8 @@ function calcTestingScore(dir, config) {
  */
 function findColocatedTests(dir) {
   // Scan these common source roots for co-located tests
-  const sourceRoots = ['src', 'app', 'lib', 'packages', 'modules'];
+  // Includes backend/, server/ for monorepo-style projects (e.g., backend/src/__tests__/)
+  const sourceRoots = ['src', 'app', 'lib', 'packages', 'modules', 'backend', 'server'];
   const ignoreSet = new Set(['node_modules', '.git', 'dist', 'build', '.next', 'coverage', '.cache']);
 
   for (const root of sourceRoots) {
@@ -534,25 +553,44 @@ function calcSecurityScore(dir, config) {
   let score = 0;
   const ptc = config.projectTypeConfig || {};
 
-  // SECURITY.md exists
-  if (existsSync(resolve(dir, 'docs-canonical/SECURITY.md'))) score += 30;
+  // SECURITY.md exists (25 pts)
+  if (existsSync(resolve(dir, 'docs-canonical/SECURITY.md'))) score += 25;
 
-  // .gitignore exists and includes .env
+  // .gitignore exists and includes .env (15 + 15 pts)
   const gitignorePath = resolve(dir, '.gitignore');
   if (existsSync(gitignorePath)) {
-    score += 20;
+    score += 15;
     const content = readFileSync(gitignorePath, 'utf-8');
-    if (content.includes('.env')) score += 20;
+    if (content.includes('.env')) score += 15;
   }
 
-  // No .env file committed (check if .env exists but .gitignore covers it)
-  if (!existsSync(resolve(dir, '.env')) || existsSync(gitignorePath)) score += 15;
+  // No .env file committed (10 pts)
+  if (!existsSync(resolve(dir, '.env')) || existsSync(gitignorePath)) score += 10;
 
-  // .env.example exists (safe template) — only check if project needs env vars
+  // .env.example exists (safe template) — only check if project needs env vars (10 pts)
   if (ptc.needsEnvExample === false) {
-    score += 15; // Full marks — project doesn't need env vars
+    score += 10; // Full marks — project doesn't need env vars
   } else if (existsSync(resolve(dir, '.env.example'))) {
-    score += 15;
+    score += 10;
+  }
+
+  // No hardcoded secrets found by security validator (25 pts)
+  // Commands MAY compose validator results (Constitution IV, v1.1.0)
+  try {
+    const secResults = validateSecurity(dir, config);
+    if (secResults.errors.length === 0) {
+      score += 25;
+    } else {
+      // Partial credit: deduct proportionally, but give at least some credit
+      // if there are few findings relative to project size
+      const findingCount = secResults.errors.length;
+      if (findingCount <= 2) score += 15;
+      else if (findingCount <= 5) score += 5;
+      // 6+ findings = 0 pts for this check
+    }
+  } catch {
+    // If validator fails to run, give benefit of the doubt
+    score += 25;
   }
 
   return Math.min(100, score);
@@ -668,8 +706,12 @@ function getSuggestion(category, score, details) {
   const suggestions = {
     structure: 'Run `docguard init` to create missing documentation',
     docQuality: 'Run `docguard fix` to get AI prompts for each doc that needs content',
-    testing: 'Add tests/ directory and configure TEST-SPEC.md',
-    security: 'Create SECURITY.md and add .env to .gitignore → Run `docguard fix --doc security`',
+    testing: score < 40
+      ? 'Add test files (tests/, src/**/__tests__/, or configure testPatterns in .docguard.json) and create TEST-SPEC.md'
+      : 'Configure TEST-SPEC.md and add CI test step → Run `docguard fix --doc test-spec`',
+    security: score < 50
+      ? 'Create SECURITY.md and add .env to .gitignore → Run `docguard fix --doc security`'
+      : 'Review security findings with `docguard guard --verbose` — configure securityIgnore for false positives',
     environment: 'Document env variables and create .env.example → Run `docguard fix --doc environment`',
     drift: 'Create DRIFT-LOG.md and log any code deviations',
     changelog: 'Maintain CHANGELOG.md with [Unreleased] section',
